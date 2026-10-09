@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-
-type TgUser = { id: number; first_name: string };
 
 function applyDefaults(tex: THREE.CanvasTexture, repeatX = 1, repeatY = 1): THREE.CanvasTexture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -295,7 +294,7 @@ function Floor() {
 }
 
 function Ceiling() {
-  const beams: JSX.Element[] = [];
+  const beams: ReactElement[] = [];
   for (let i = -2; i <= 2; i++) {
     beams.push(
       <mesh key={i} position={[i * 5, 5.85, 0]}>
@@ -893,7 +892,6 @@ function Scene() {
 }
 
 export default function App() {
-  const [user, setUser] = useState<TgUser | null>(null);
   const [platform, setPlatform] = useState<string>("");
 
   useEffect(() => {
@@ -907,9 +905,6 @@ export default function App() {
 
       const p = tg.platform || "";
       setPlatform(p);
-
-      const u = tg.initDataUnsafe?.user;
-      if (u) setUser({ id: u.id, first_name: u.first_name });
     }
   }, []);
 
