@@ -750,11 +750,6 @@ function Drone() {
               <cylinderGeometry args={[0.06, 0.06, 0.08, 8]} />
               <meshStandardMaterial color="#3a3a42" metalness={0.5} roughness={0.3} />
             </mesh>
-            <mesh position={[0, 0.09, 0]}>
-              <circleGeometry args={[0.28, 16]} />
-              <meshBasicMaterial color="#c0c8d0" transparent opacity={0.2} side={THREE.DoubleSide} />
-            </mesh>
-
             <group ref={(el) => { propRefs.current[i] = el; }} position={[0, 0.1, 0]}>
               <mesh>
                 <boxGeometry args={[0.5, 0.01, 0.04]} />
