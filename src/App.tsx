@@ -682,8 +682,6 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
   const wallBottom = -H / 2;
   const wallTop = H / 2;
-  const doorLeft = -doorW / 2;
-  const doorRight = doorW / 2;
   const doorBottom = wallBottom;
   const doorTop = doorBottom + doorH;
   const winLeftX = -winX - winW / 2;
