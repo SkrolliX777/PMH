@@ -609,6 +609,8 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
   const H = 2.0;
   const D = 2.4;
   const ROOF_H = 1.2;
+  const doorW = 0.7;
+  const doorH = 1.4;
 
   const wallColor = "#e8c8a0";
   const trimColor = "#5a3018";
@@ -617,6 +619,10 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
   const roofAngle = Math.atan2(W / 2, ROOF_H);
 
   const windowGlow = "#ffcc70";
+
+  const wallMat = (
+    <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} side={THREE.DoubleSide} />
+  );
 
   useFrame(() => {
     if (!doorRef.current) return;
@@ -643,9 +649,40 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <meshStandardMaterial color="#5a5a60" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      <mesh position={[0, H / 2 + 0.2, 0]}>
-        <boxGeometry args={[W, H, D]} />
-        <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} side={THREE.DoubleSide} />
+      {/* Задняя стена */}
+      <mesh position={[0, H / 2 + 0.2, -D / 2]}>
+        <planeGeometry args={[W, H]} />
+        {wallMat}
+      </mesh>
+      {/* Левая стена */}
+      <mesh position={[-W / 2, H / 2 + 0.2, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[D, H]} />
+        {wallMat}
+      </mesh>
+      {/* Правая стена */}
+      <mesh position={[W / 2, H / 2 + 0.2, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[D, H]} />
+        {wallMat}
+      </mesh>
+      {/* Передняя стена — левый сегмент */}
+      <mesh position={[-(W / 2 + doorW / 2) / 2, H / 2 + 0.2, D / 2]}>
+        <planeGeometry args={[W / 2 - doorW / 2, H]} />
+        {wallMat}
+      </mesh>
+      {/* Передняя стена — правый сегмент */}
+      <mesh position={[(W / 2 + doorW / 2) / 2, H / 2 + 0.2, D / 2]}>
+        <planeGeometry args={[W / 2 - doorW / 2, H]} />
+        {wallMat}
+      </mesh>
+      {/* Передняя стена — над дверью */}
+      <mesh position={[0, H / 2 + 0.2 + doorH / 2 + (H - doorH) / 4, D / 2]}>
+        <planeGeometry args={[doorW, (H - doorH) / 2]} />
+        {wallMat}
+      </mesh>
+      {/* Верхняя крышка над стеной (закрывает щель между стеной и крышей) */}
+      <mesh position={[0, H + 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[W, D]} />
+        <meshStandardMaterial color={wallColor} roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
 
       <HouseInterior />
@@ -655,11 +692,11 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0, H + 0.2, D / 2]}>
         <GableTriangle width={W} height={ROOF_H} />
-        <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} side={THREE.DoubleSide} />
+        {wallMat}
       </mesh>
       <mesh position={[0, H + 0.2, -D / 2]} rotation={[0, Math.PI, 0]}>
         <GableTriangle width={W} height={ROOF_H} />
-        <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} side={THREE.DoubleSide} />
+        {wallMat}
       </mesh>
 
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.02]}>
@@ -789,7 +826,7 @@ function Crates() {
   );
 }
 
-function Drone() {
+function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
@@ -798,7 +835,21 @@ function Drone() {
   const START = useRef(performance.now());
 
   useFrame(() => {
-    const elapsed = (performance.now() - START.current) / 1000;
+    let elapsed: number;
+    const isIntroActive = introStartRef.current != null;
+
+    if (isIntroActive) {
+      const sinceIntro = (performance.now() - introStartRef.current!) / 1000;
+      if (sinceIntro < 8.7) {
+        if (groupRef.current) groupRef.current.visible = false;
+        return;
+      }
+      if (groupRef.current) groupRef.current.visible = true;
+      elapsed = sinceIntro - 8.7;
+    } else {
+      elapsed = (performance.now() - START.current) / 1000;
+    }
+
     const LOOP_SECONDS = 20;
     const t = (elapsed % LOOP_SECONDS) / LOOP_SECONDS;
 
@@ -925,64 +976,61 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
 
     const elapsed = (performance.now() - introStartRef.current) / 1000;
 
+    // Фаза 1: стоим внутри дома, смотрим на закрытую дверь
     if (elapsed < 2.5) {
-      camera.position.set(-0.35, 0.5, -0.5);
-      camera.lookAt(-0.35, -0.3, 1.21);
+      camera.position.set(0, -0.4, -0.7);
+      camera.lookAt(0, -0.6, 1.21);
       return;
     }
 
+    // Фаза 2: дверь открывается, камера чуть подаётся вперёд
     if (elapsed < 3.7) {
       const t = (elapsed - 2.5) / 1.2;
-      camera.position.set(-0.35, 0.5, -0.5 + t * 0.8);
-      camera.lookAt(-0.35, -0.3, 1.21);
-      return;
-    }
-
-    if (elapsed < 5.5) {
-      const t = (elapsed - 3.7) / 1.8;
       const et = t * t * (3 - 2 * t);
-      camera.position.set(
-        -0.35 + et * 0.35,
-        0.5 + et * 1.0,
-        0.3 + et * 3.7
-      );
-      camera.lookAt(
-        -0.35 + et * 0.35,
-        -0.3 + et * 0.5,
-        1.21 + et * 1.79
-      );
+      camera.position.set(0, -0.4, -0.7 + et * 0.5);
+      camera.lookAt(0, -0.6, 1.21);
       return;
     }
 
-    if (elapsed < 7.0) {
-      const t = (elapsed - 5.5) / 1.5;
+    // Фаза 3: вылет через дверной проём
+    if (elapsed < 5.7) {
+      const t = (elapsed - 3.7) / 2.0;
       const et = t * t * (3 - 2 * t);
-      const sx = 0;
-      const sy = 1.5;
-      const sz = 4.0;
-      const ex = 8.5;
-      const ey = 3.5;
-      const ez = 0;
-      camera.position.set(
-        sx + (ex - sx) * et,
-        sy + (ey - sy) * et,
-        sz + (ez - sz) * et
-      );
-      const lsx = 0;
-      const lsy = 0.2;
-      const lsz = 3.0;
-      const lex = 0;
-      const ley = 1.5;
-      const lez = 1.5;
-      camera.lookAt(
-        lsx + (lex - lsx) * et,
-        lsy + (ley - lsy) * et,
-        lsz + (lez - lsz) * et
-      );
+      const x = 0;
+      const y = -0.4 + et * 2.4;
+      const z = -0.2 + et * 5.2;
+      camera.position.set(x, y, z);
+
+      // Плавный переход взгляда от двери к центру сцены
+      const lookY = -0.6 + et * 2.1;
+      const lookZ = 1.21 + et * 0.29;
+      camera.lookAt(0, lookY, lookZ);
       return;
     }
 
-    const t = (elapsed - 7.0) / 20;
+    // Фаза 4: плавная дуга к позиции орбиты (медленно, 3 сек)
+    if (elapsed < 8.7) {
+      const t = (elapsed - 5.7) / 3.0;
+      const et = t * t * t * (t * (t * 6 - 15) + 10); // quintic easing
+
+      const startX = 0;
+      const startY = 2.0;
+      const startZ = 5.0;
+      const endX = 8.5;
+      const endY = 3.5;
+      const endZ = 0;
+
+      camera.position.set(
+        startX + (endX - startX) * et,
+        startY + (endY - startY) * et,
+        startZ + (endZ - startZ) * et
+      );
+      camera.lookAt(0, 1.5, 1.5);
+      return;
+    }
+
+    // Фаза 5: бесконечная орбита
+    const t = (elapsed - 8.7) / 20;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
@@ -1033,7 +1081,7 @@ function Scene() {
 
   useEffect(() => {
     introStartRef.current = performance.now();
-    const t = setTimeout(() => setShowHud(true), 7000);
+    const t = setTimeout(() => setShowHud(true), 8700);
     return () => clearTimeout(t);
   }, []);
 
@@ -1088,7 +1136,7 @@ function Scene() {
         <Room />
         <Crates />
         <House introStartRef={introStartRef} />
-        <Drone />
+        <Drone introStartRef={introStartRef} />
         <CinematicCamera introStartRef={introStartRef} />
         <FpsMeter textRef={fpsRef} />
       </Canvas>
