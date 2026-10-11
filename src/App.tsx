@@ -103,7 +103,7 @@ function createWoodTexture(): THREE.CanvasTexture {
     ctx.lineTo(128, y + 20);
     ctx.stroke();
   }
-  return applyDefaults(new THREE.CanvasTexture(c), 2, 2);
+    return applyDefaults(new THREE.CanvasTexture(c), 1, 1);
 }
 
 function createRoofTexture(): THREE.CanvasTexture {
