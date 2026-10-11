@@ -629,9 +629,9 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
     let open = 0;
     if (introStartRef.current != null) {
       const elapsed = (performance.now() - introStartRef.current) / 1000;
-      if (elapsed >= 2.5 && elapsed < 3.7) {
-        open = (elapsed - 2.5) / 1.2;
-      } else if (elapsed >= 3.7 && elapsed < 5.5) {
+      if (elapsed >= 2.5 && elapsed < 3.5) {
+        open = (elapsed - 2.5) / 1.0;
+      } else if (elapsed >= 3.5 && elapsed < 5.5) {
         open = 1;
       } else if (elapsed >= 5.5 && elapsed < 6.5) {
         open = 1 - (elapsed - 5.5) / 1.0;
@@ -639,7 +639,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         open = 0;
       }
     }
-    doorRef.current.rotation.y = -open * Math.PI / 2;
+    doorRef.current.rotation.y = open * Math.PI / 2;
   });
 
   return (
@@ -649,37 +649,30 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <meshStandardMaterial color="#5a5a60" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      {/* Задняя стена */}
       <mesh position={[0, H / 2 + 0.2, -D / 2]}>
         <planeGeometry args={[W, H]} />
         {wallMat}
       </mesh>
-      {/* Левая стена */}
       <mesh position={[-W / 2, H / 2 + 0.2, 0]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[D, H]} />
         {wallMat}
       </mesh>
-      {/* Правая стена */}
       <mesh position={[W / 2, H / 2 + 0.2, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <planeGeometry args={[D, H]} />
         {wallMat}
       </mesh>
-      {/* Передняя стена — левый сегмент */}
       <mesh position={[-(W / 2 + doorW / 2) / 2, H / 2 + 0.2, D / 2]}>
         <planeGeometry args={[W / 2 - doorW / 2, H]} />
         {wallMat}
       </mesh>
-      {/* Передняя стена — правый сегмент */}
       <mesh position={[(W / 2 + doorW / 2) / 2, H / 2 + 0.2, D / 2]}>
         <planeGeometry args={[W / 2 - doorW / 2, H]} />
         {wallMat}
       </mesh>
-      {/* Передняя стена — над дверью */}
-      <mesh position={[0, H / 2 + 0.2 + doorH / 2 + (H - doorH) / 4, D / 2]}>
-        <planeGeometry args={[doorW, (H - doorH) / 2]} />
+      <mesh position={[0, 1.9, D / 2]}>
+        <planeGeometry args={[doorW, 0.6]} />
         {wallMat}
       </mesh>
-      {/* Верхняя крышка над стеной (закрывает щель между стеной и крышей) */}
       <mesh position={[0, H + 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[W, D]} />
         <meshStandardMaterial color={wallColor} roughness={0.9} side={THREE.DoubleSide} />
@@ -835,23 +828,18 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
   const START = useRef(performance.now());
 
   useFrame(() => {
-    let elapsed: number;
-    const isIntroActive = introStartRef.current != null;
+    const LOOP_SECONDS = 20;
+    let droneElapsed: number;
 
-    if (isIntroActive) {
-      const sinceIntro = (performance.now() - introStartRef.current!) / 1000;
-      if (sinceIntro < 8.7) {
-        if (groupRef.current) groupRef.current.visible = false;
-        return;
-      }
-      if (groupRef.current) groupRef.current.visible = true;
-      elapsed = sinceIntro - 8.7;
+    if (introStartRef.current != null) {
+      const sinceIntro = (performance.now() - introStartRef.current) / 1000;
+      const raw = sinceIntro - 8.7;
+      droneElapsed = ((raw % LOOP_SECONDS) + LOOP_SECONDS) % LOOP_SECONDS;
     } else {
-      elapsed = (performance.now() - START.current) / 1000;
+      droneElapsed = ((performance.now() - START.current) / 1000) % LOOP_SECONDS;
     }
 
-    const LOOP_SECONDS = 20;
-    const t = (elapsed % LOOP_SECONDS) / LOOP_SECONDS;
+    const t = droneElapsed / LOOP_SECONDS;
 
     const eased = t + Math.sin(t * Math.PI * 2) * 0.08;
     const cameraAngle = eased * Math.PI * 2;
@@ -859,7 +847,7 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
     const droneAngle = cameraAngle + Math.PI;
     const radius = 8.5 + Math.sin(droneAngle * 2) * 2.5;
 
-    const height = 4.25 + Math.sin(elapsed * 1.3) * 0.3 + Math.sin(elapsed * 0.7) * 0.15;
+    const height = 4.25 + Math.sin(droneElapsed * 1.3) * 0.3 + Math.sin(droneElapsed * 0.7) * 0.15;
 
     if (groupRef.current) {
       groupRef.current.position.set(
@@ -875,26 +863,26 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
       innerRef.current.lookAt(camera.position);
       innerRef.current.rotateY(Math.PI);
 
-      const pitchSwing = Math.sin(elapsed * 1.8) * 0.25;
+      const pitchSwing = Math.sin(droneElapsed * 1.8) * 0.25;
       innerRef.current.rotateX(pitchSwing);
 
-      const rollSwing = Math.sin(elapsed * 1.3 + 0.5) * 0.12;
+      const rollSwing = Math.sin(droneElapsed * 1.3 + 0.5) * 0.12;
       innerRef.current.rotateZ(rollSwing);
     }
 
     propRefs.current.forEach((prop, i) => {
       if (prop) {
         const dir = i % 2 === 0 ? 1 : -1;
-        prop.rotation.y = elapsed * 60 * dir + i * 1.5;
+        prop.rotation.y = performance.now() / 1000 * 60 * dir + i * 1.5;
       }
     });
 
     if (ledRef.current) {
-      const blink = Math.sin(elapsed * 6) > 0.5 ? 1 : 0;
+      const blink = Math.sin(droneElapsed * 6) > 0.5 ? 1 : 0;
       ledRef.current.visible = blink === 1;
       const mat = ledRef.current.material as THREE.MeshBasicMaterial;
       if (mat) {
-        mat.opacity = 0.5 + Math.abs(Math.sin(elapsed * 6)) * 0.5;
+        mat.opacity = 0.5 + Math.abs(Math.sin(droneElapsed * 6)) * 0.5;
       }
     }
   });
@@ -976,61 +964,62 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
 
     const elapsed = (performance.now() - introStartRef.current) / 1000;
 
-    // Фаза 1: стоим внутри дома, смотрим на закрытую дверь
+    // Фаза 1: стоим внутри дома, смотрим вглубь (на интерьер)
     if (elapsed < 2.5) {
-      camera.position.set(0, -0.4, -0.7);
+      camera.position.set(0, -0.4, 0.75);
+      camera.lookAt(0, -0.9, -1.18);
+      return;
+    }
+
+    // Фаза 2: разворот на 180° через правую сторону
+    if (elapsed < 4.0) {
+      const t = (elapsed - 2.5) / 1.5;
+      const et = t * t * (3 - 2 * t);
+
+      camera.position.set(0, -0.4, 0.75);
+
+      const targetX = Math.sin(et * Math.PI) * 1.4;
+      const targetY = -0.9 + 0.5 * et;
+      const targetZ = -1.18 + 2.39 * et;
+      camera.lookAt(targetX, targetY, targetZ);
+      return;
+    }
+
+    // Фаза 3: движение к двери
+    if (elapsed < 4.7) {
+      const t = (elapsed - 4.0) / 0.7;
+      const et = t * t * (3 - 2 * t);
+
+      camera.position.set(0, -0.4 + 0.7 * et, 0.75 + 0.3 * et);
       camera.lookAt(0, -0.6, 1.21);
       return;
     }
 
-    // Фаза 2: дверь открывается, камера чуть подаётся вперёд
-    if (elapsed < 3.7) {
-      const t = (elapsed - 2.5) / 1.2;
+    // Фаза 4: вылет наружу через дверь + переход к орбите
+    if (elapsed < 7.2) {
+      const t = (elapsed - 4.7) / 2.5;
       const et = t * t * (3 - 2 * t);
-      camera.position.set(0, -0.4, -0.7 + et * 0.5);
-      camera.lookAt(0, -0.6, 1.21);
-      return;
-    }
 
-    // Фаза 3: вылет через дверной проём
-    if (elapsed < 5.7) {
-      const t = (elapsed - 3.7) / 2.0;
-      const et = t * t * (3 - 2 * t);
-      const x = 0;
-      const y = -0.4 + et * 2.4;
-      const z = -0.2 + et * 5.2;
-      camera.position.set(x, y, z);
-
-      // Плавный переход взгляда от двери к центру сцены
-      const lookY = -0.6 + et * 2.1;
-      const lookZ = 1.21 + et * 0.29;
-      camera.lookAt(0, lookY, lookZ);
-      return;
-    }
-
-    // Фаза 4: плавная дуга к позиции орбиты (медленно, 3 сек)
-    if (elapsed < 8.7) {
-      const t = (elapsed - 5.7) / 3.0;
-      const et = t * t * t * (t * (t * 6 - 15) + 10); // quintic easing
-
-      const startX = 0;
-      const startY = 2.0;
-      const startZ = 5.0;
-      const endX = 8.5;
-      const endY = 3.5;
-      const endZ = 0;
-
+      const sx = 0, sy = 0.3, sz = 1.05;
+      const ex = 8.5, ey = 3.5, ez = 0;
       camera.position.set(
-        startX + (endX - startX) * et,
-        startY + (endY - startY) * et,
-        startZ + (endZ - startZ) * et
+        sx + (ex - sx) * et,
+        sy + (ey - sy) * et,
+        sz + (ez - sz) * et
       );
-      camera.lookAt(0, 1.5, 1.5);
+
+      const lsx = 0, lsy = -0.6, lsz = 1.21;
+      const lex = 0, ley = 1.5, lez = 1.5;
+      camera.lookAt(
+        lsx + (lex - lsx) * et,
+        lsy + (ley - lsy) * et,
+        lsz + (lez - lsz) * et
+      );
       return;
     }
 
     // Фаза 5: бесконечная орбита
-    const t = (elapsed - 8.7) / 20;
+    const t = (elapsed - 7.2) / 20;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
@@ -1076,12 +1065,11 @@ function FpsMeter({ textRef }: { textRef: { current: HTMLDivElement | null } }) 
 
 function Scene() {
   const fpsRef = useRef<HTMLDivElement>(null);
-  const introStartRef = useRef<number | null>(null);
+  const introStartRef = useRef<number | null>(performance.now());
   const [showHud, setShowHud] = useState(false);
 
   useEffect(() => {
-    introStartRef.current = performance.now();
-    const t = setTimeout(() => setShowHud(true), 8700);
+    const t = setTimeout(() => setShowHud(true), 7500);
     return () => clearTimeout(t);
   }, []);
 
@@ -1115,7 +1103,7 @@ function Scene() {
       </div>
 
       <Canvas
-        camera={{ position: [8.5, 3.5, 0], fov: 55 }}
+        camera={{ position: [0, -0.4, 0.75], fov: 55 }}
         dpr={[1, 1.5]}
         gl={{
           antialias: true,
