@@ -1079,72 +1079,73 @@ function CinematicCamera({
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
     if (elapsed < 2.5) {
-      camera.position.set(0, -0.4, 0.75);
-      camera.lookAt(0, -0.6, -2.25);
-      return;
-    }
+    camera.position.set(0, -0.4, -0.6);
+    camera.lookAt(0, -0.6, -3.6);
+    return;
+}
 
     if (elapsed < 5.0) {
-      const t = (elapsed - 2.5) / 2.5;
-      const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
+  const t = (elapsed - 2.5) / 2.5;
+  const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(0, -0.4, 0.75);
+  camera.position.set(0, -0.4, -0.6);
 
-      const dx = -Math.sin(yaw) * 3;
-      const dz = -Math.cos(yaw) * 3;
+  const dx = Math.sin(yaw) * 3;
+  const dz = -Math.cos(yaw) * 3;
 
-      camera.lookAt(
-        camera.position.x + dx,
-        camera.position.y - 0.2,
-        camera.position.z + dz
-      );
-      return;
-    }
+  camera.lookAt(
+    camera.position.x + dx,
+    camera.position.y - 0.2,
+    camera.position.z + dz
+  );
+  return;
+}
 
-    if (elapsed < 7.5) {
-      const t = (elapsed - 5.0) / 2.5;
-      const et = smoothstep(Math.max(0, Math.min(1, t)));
+   if (elapsed < 7.5) {
+  const t = (elapsed - 5.0) / 2.5;
+  const et = smoothstep(Math.max(0, Math.min(1, t)));
 
-      camera.position.set(
-        0,
-        -0.4 + et * 0.9,
-        0.75 + et * 4.75
-      );
+  camera.position.set(
+    0,
+    -0.4 + et * 0.3,
+    -0.6 + et * 6.1
+  );
 
-      camera.lookAt(0, camera.position.y - 0.3, camera.position.z + 3);
-      return;
-    }
+  camera.lookAt(0, camera.position.y - 0.2, camera.position.z + 3);
+  return;
+}
 
     if (elapsed < 9.5) {
-      const t = (elapsed - 7.5) / 2.0;
-      const et = smoothstep(Math.max(0, Math.min(1, t)));
+  const t = (elapsed - 7.5) / 2.0;
+  const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(
-        0,
-        0.5 + et * 3.0,
-        5.5 + et * 1.0
-      );
+  camera.position.set(0, 0.2, 5.5);
 
-      camera.lookAt(0, camera.position.y - 0.3, camera.position.z + 3);
-      return;
-    }
+  const dx = Math.sin(yaw) * 3;
+  const dz = Math.cos(yaw) * 3;
 
+  camera.lookAt(
+    camera.position.x + dx,
+    camera.position.y + 1.0,
+    camera.position.z + dz
+  );
+  return;
+}
     if (elapsed < 12.0) {
-      const t = (elapsed - 9.5) / 2.5;
-      const et = smoothstep(Math.max(0, Math.min(1, t)));
+  const t = (elapsed - 9.5) / 2.5;
+  const et = smoothstep(Math.max(0, Math.min(1, t)));
 
-      camera.position.set(
-        0 + (8.5 - 0) * et,
-        3.5,
-        6.5 + (0 - 6.5) * et
-      );
+  camera.position.set(
+    0 + (8.5 - 0) * et,
+    0.2 + (3.5 - 0.2) * et,
+    5.5 + (0 - 5.5) * et
+  );
 
-      const lookY = 3.2 + (1.5 - 3.2) * et;
-      const lookZ = 9.5 + (1.5 - 9.5) * et;
-      camera.lookAt(0, lookY, lookZ);
-      return;
-    }
-
+  const lookY = 1.2 + (1.5 - 1.2) * et;
+  const lookZ = 2.5 + (1.5 - 2.5) * et;
+  camera.lookAt(0, lookY, lookZ);
+  return;
+}
     const t = (elapsed - 12.0) / ORBIT_PERIOD;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
@@ -1162,8 +1163,8 @@ function CinematicCamera({
       swayCurrent.current.x += (swayTarget.current.x - swayCurrent.current.x) * 0.08;
       swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.08;
 
-      camera.rotateY(-swayCurrent.current.x);
-      camera.rotateX(swayCurrent.current.y);
+      camera.rotateY(swayCurrent.current.x);
+      camera.rotateX(-swayCurrent.current.y);
     }
   });
 
