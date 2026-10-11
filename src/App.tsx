@@ -452,9 +452,158 @@ function SideWindow({ side }: { side: "left" | "right" }) {
   );
 }
 
-function House() {
+function FrontWindow({ x }: { x: number }) {
+  const trimColor = "#5a3018";
+  const windowGlow = "#ffcc70";
+  const D = 2.4;
+  const y = 1.35;
+  const z = D / 2 + 0.01;
+  const zz = D / 2 + 0.02;
+
+  return (
+    <group>
+      <mesh position={[x, y, z]}>
+        <planeGeometry args={[0.6, 0.6]} />
+        <meshBasicMaterial color={windowGlow} />
+      </mesh>
+      <mesh position={[x, y, zz]}>
+        <boxGeometry args={[0.68, 0.04, 0.01]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[x, y, zz]}>
+        <boxGeometry args={[0.04, 0.68, 0.01]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[x, y + 0.33, zz]}>
+        <boxGeometry args={[0.72, 0.06, 0.03]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[x, y - 0.33, zz]}>
+        <boxGeometry args={[0.72, 0.06, 0.03]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[x - 0.33, y, zz]}>
+        <boxGeometry args={[0.06, 0.72, 0.03]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[x + 0.33, y, zz]}>
+        <boxGeometry args={[0.06, 0.72, 0.03]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+      </mesh>
+    </group>
+  );
+}
+
+function Door({ doorRef }: { doorRef: React.RefObject<THREE.Group | null> }) {
+  const trimColor = "#5a3018";
+  const D = 2.4;
+  const doorWidth = 0.7;
+  const doorHeight = 1.4;
+
+  return (
+    <group position={[-doorWidth / 2, 0.9, D / 2 + 0.01]}>
+      <group ref={doorRef}>
+        <mesh position={[doorWidth / 2, 0, 0]}>
+          <planeGeometry args={[doorWidth, doorHeight]} />
+          <meshStandardMaterial color={trimColor} roughness={0.55} metalness={0.1} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[doorWidth - 0.1, -0.05, 0.03]}>
+          <sphereGeometry args={[0.07, 10, 8]} />
+          <meshStandardMaterial
+            color="#ffd060"
+            metalness={0.4}
+            roughness={0.15}
+            emissive="#5a3a00"
+            emissiveIntensity={0.3}
+          />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function HouseInterior() {
+  const woodColor = "#b89060";
+  const darkWood = "#6a4020";
+
+  return (
+    <group>
+      <mesh position={[0, 0.21, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[2.36, 2.36]} />
+        <meshStandardMaterial color={woodColor} roughness={0.85} />
+      </mesh>
+
+      <group position={[-0.75, 0.2, -0.5]}>
+        {[[-0.22, -0.15], [0.22, -0.15], [-0.22, 0.15], [0.22, 0.15]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.28, z]}>
+            <boxGeometry args={[0.04, 0.56, 0.04]} />
+            <meshStandardMaterial color={darkWood} roughness={0.8} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.58, 0]}>
+          <boxGeometry args={[0.55, 0.06, 0.4]} />
+          <meshStandardMaterial color={darkWood} roughness={0.7} />
+        </mesh>
+      </group>
+
+      <group position={[-0.5, 0.2, 0.15]}>
+        {[[-0.14, -0.14], [0.14, -0.14], [-0.14, 0.14], [0.14, 0.14]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 0.2, z]}>
+            <boxGeometry args={[0.04, 0.4, 0.04]} />
+            <meshStandardMaterial color={darkWood} roughness={0.8} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.42, 0]}>
+          <boxGeometry args={[0.34, 0.05, 0.34]} />
+          <meshStandardMaterial color={darkWood} roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.7, -0.15]}>
+          <boxGeometry args={[0.34, 0.5, 0.04]} />
+          <meshStandardMaterial color={darkWood} roughness={0.7} />
+        </mesh>
+      </group>
+
+      <group position={[0.7, 0.2, -0.55]}>
+        <mesh position={[0, 0.1, 0]}>
+          <boxGeometry args={[0.72, 0.2, 1.05]} />
+          <meshStandardMaterial color="#4a2a15" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.22, 0]}>
+          <boxGeometry args={[0.66, 0.12, 0.98]} />
+          <meshStandardMaterial color="#e8e0d0" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.3, 0.2]}>
+          <boxGeometry args={[0.68, 0.06, 0.55]} />
+          <meshStandardMaterial color="#6a3a7a" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.32, -0.35]}>
+          <boxGeometry args={[0.55, 0.08, 0.22]} />
+          <meshStandardMaterial color="#f0e8d0" roughness={0.9} />
+        </mesh>
+      </group>
+
+      <group position={[0, 2.05, 0]}>
+        <mesh>
+          <cylinderGeometry args={[0.01, 0.01, 0.25, 6]} />
+          <meshBasicMaterial color="#1a1a20" />
+        </mesh>
+        <mesh position={[0, -0.17, 0]}>
+          <coneGeometry args={[0.14, 0.15, 10, 1, true]} />
+          <meshStandardMaterial color="#3a3a30" roughness={0.5} metalness={0.3} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0, -0.24, 0]}>
+          <sphereGeometry args={[0.05, 8, 6]} />
+          <meshBasicMaterial color="#ffeeaa" />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function House({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const woodTex = getTex("wood", createWoodTexture);
   const roofTex = getTex("roof", createRoofTexture);
+  const doorRef = useRef<THREE.Group>(null);
 
   const W = 2.4;
   const H = 2.0;
@@ -469,6 +618,24 @@ function House() {
 
   const windowGlow = "#ffcc70";
 
+  useFrame(() => {
+    if (!doorRef.current) return;
+    let open = 0;
+    if (introStartRef.current != null) {
+      const elapsed = (performance.now() - introStartRef.current) / 1000;
+      if (elapsed >= 2.5 && elapsed < 3.7) {
+        open = (elapsed - 2.5) / 1.2;
+      } else if (elapsed >= 3.7 && elapsed < 5.5) {
+        open = 1;
+      } else if (elapsed >= 5.5 && elapsed < 6.5) {
+        open = 1 - (elapsed - 5.5) / 1.0;
+      } else {
+        open = 0;
+      }
+    }
+    doorRef.current.rotation.y = -open * Math.PI / 2;
+  });
+
   return (
     <group position={[0, -1.5, 0]}>
       <mesh position={[0, 0.1, 0]}>
@@ -478,8 +645,10 @@ function House() {
 
       <mesh position={[0, H / 2 + 0.2, 0]}>
         <boxGeometry args={[W, H, D]} />
-        <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} />
+        <meshStandardMaterial map={woodTex} color={wallColor} roughness={0.65} metalness={0.05} side={THREE.DoubleSide} />
       </mesh>
+
+      <HouseInterior />
 
       <SideWindow side="left" />
       <SideWindow side="right" />
@@ -530,46 +699,10 @@ function House() {
       </mesh>
       <Smoke x={0.6} y={H + 0.2 + ROOF_H * 0.7 + 0.5} z={-0.3} />
 
-      <mesh position={[0, 0.9, D / 2 + 0.01]}>
-        <planeGeometry args={[0.7, 1.4]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} metalness={0.1} />
-      </mesh>
-      <mesh position={[0.24, 0.85, D / 2 + 0.03]}>
-        <sphereGeometry args={[0.07, 10, 8]} />
-        <meshStandardMaterial
-          color="#ffd060"
-          metalness={0.4}
-          roughness={0.15}
-          emissive="#5a3a00"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
+      <Door doorRef={doorRef} />
 
-      <mesh position={[-0.75, 1.35, D / 2 + 0.01]}>
-        <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color={windowGlow} />
-      </mesh>
-      <mesh position={[-0.75, 1.35, D / 2 + 0.02]}>
-        <boxGeometry args={[0.68, 0.04, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
-      <mesh position={[-0.75, 1.35, D / 2 + 0.02]}>
-        <boxGeometry args={[0.04, 0.68, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
-
-      <mesh position={[0.75, 1.35, D / 2 + 0.01]}>
-        <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color={windowGlow} />
-      </mesh>
-      <mesh position={[0.75, 1.35, D / 2 + 0.02]}>
-        <boxGeometry args={[0.68, 0.04, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
-      <mesh position={[0.75, 1.35, D / 2 + 0.02]}>
-        <boxGeometry args={[0.04, 0.68, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
+      <FrontWindow x={-0.75} />
+      <FrontWindow x={0.75} />
 
       <pointLight position={[0, 1.2, 0]} intensity={2} distance={5} color="#ffcc70" />
 
@@ -701,7 +834,7 @@ function Drone() {
     propRefs.current.forEach((prop, i) => {
       if (prop) {
         const dir = i % 2 === 0 ? 1 : -1;
-        prop.rotation.y = elapsed * 25 * dir + i * 1.5;
+        prop.rotation.y = elapsed * 60 * dir + i * 1.5;
       }
     });
 
@@ -750,10 +883,10 @@ function Drone() {
               <cylinderGeometry args={[0.06, 0.06, 0.08, 8]} />
               <meshStandardMaterial color="#3a3a42" metalness={0.5} roughness={0.3} />
             </mesh>
-             <mesh position={[0, 0.09, 0]}>
-      <circleGeometry args={[0.28, 16]} />
-      <meshBasicMaterial color="#c0c8d0" transparent opacity={0.1} side={THREE.DoubleSide} />
-    </mesh>
+            <mesh position={[0, 0.09, 0]}>
+              <circleGeometry args={[0.28, 16]} />
+              <meshBasicMaterial color="#c0c8d0" transparent opacity={0.1} side={THREE.DoubleSide} />
+            </mesh>
             <group ref={(el) => { propRefs.current[i] = el; }} position={[0, 0.1, 0]}>
               <mesh>
                 <boxGeometry args={[0.5, 0.01, 0.04]} />
@@ -780,16 +913,77 @@ function Drone() {
   );
 }
 
-function CinematicCamera() {
+function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const { camera } = useThree();
-  const START = useRef(performance.now());
 
   useFrame(() => {
-    const elapsed = (performance.now() - START.current) / 1000;
-    const LOOP_SECONDS = 20;
-    const t = (elapsed % LOOP_SECONDS) / LOOP_SECONDS;
-    const angle = t * Math.PI * 2;
+    if (introStartRef.current == null) {
+      camera.position.set(8.5, 3.5, 0);
+      camera.lookAt(0, 1.5, 1.5);
+      return;
+    }
 
+    const elapsed = (performance.now() - introStartRef.current) / 1000;
+
+    if (elapsed < 2.5) {
+      camera.position.set(-0.35, 0.5, -0.5);
+      camera.lookAt(-0.35, -0.3, 1.21);
+      return;
+    }
+
+    if (elapsed < 3.7) {
+      const t = (elapsed - 2.5) / 1.2;
+      camera.position.set(-0.35, 0.5, -0.5 + t * 0.8);
+      camera.lookAt(-0.35, -0.3, 1.21);
+      return;
+    }
+
+    if (elapsed < 5.5) {
+      const t = (elapsed - 3.7) / 1.8;
+      const et = t * t * (3 - 2 * t);
+      camera.position.set(
+        -0.35 + et * 0.35,
+        0.5 + et * 1.0,
+        0.3 + et * 3.7
+      );
+      camera.lookAt(
+        -0.35 + et * 0.35,
+        -0.3 + et * 0.5,
+        1.21 + et * 1.79
+      );
+      return;
+    }
+
+    if (elapsed < 7.0) {
+      const t = (elapsed - 5.5) / 1.5;
+      const et = t * t * (3 - 2 * t);
+      const sx = 0;
+      const sy = 1.5;
+      const sz = 4.0;
+      const ex = 8.5;
+      const ey = 3.5;
+      const ez = 0;
+      camera.position.set(
+        sx + (ex - sx) * et,
+        sy + (ey - sy) * et,
+        sz + (ez - sz) * et
+      );
+      const lsx = 0;
+      const lsy = 0.2;
+      const lsz = 3.0;
+      const lex = 0;
+      const ley = 1.5;
+      const lez = 1.5;
+      camera.lookAt(
+        lsx + (lex - lsx) * et,
+        lsy + (ley - lsy) * et,
+        lsz + (lez - lsz) * et
+      );
+      return;
+    }
+
+    const t = (elapsed - 7.0) / 20;
+    const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
 
@@ -834,6 +1028,14 @@ function FpsMeter({ textRef }: { textRef: { current: HTMLDivElement | null } }) 
 
 function Scene() {
   const fpsRef = useRef<HTMLDivElement>(null);
+  const introStartRef = useRef<number | null>(null);
+  const [showHud, setShowHud] = useState(false);
+
+  useEffect(() => {
+    introStartRef.current = performance.now();
+    const t = setTimeout(() => setShowHud(true), 7000);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <>
@@ -843,6 +1045,8 @@ function Scene() {
         fontFamily: "system-ui", fontSize: 14, fontWeight: 600,
         letterSpacing: 1, textShadow: "0 1px 4px rgba(0,0,0,0.6)",
         pointerEvents: "none",
+        opacity: showHud ? 1 : 0,
+        transition: "opacity 1s ease",
       }}>
         PMH — тест FPS
       </div>
@@ -855,6 +1059,8 @@ function Scene() {
           zIndex: 10, fontFamily: "monospace", fontSize: 11,
           background: "rgba(0,0,0,0.55)", padding: "3px 8px",
           borderRadius: 4, pointerEvents: "none",
+          opacity: showHud ? 1 : 0,
+          transition: "opacity 1s ease",
         }}
       >
         — FPS
@@ -881,9 +1087,9 @@ function Scene() {
 
         <Room />
         <Crates />
-        <House />
+        <House introStartRef={introStartRef} />
         <Drone />
-        <CinematicCamera />
+        <CinematicCamera introStartRef={introStartRef} />
         <FpsMeter textRef={fpsRef} />
       </Canvas>
     </>
@@ -892,6 +1098,7 @@ function Scene() {
 
 export default function App() {
   const [platform, setPlatform] = useState<string>("");
+  const [fadeDone, setFadeDone] = useState(false);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -905,6 +1112,9 @@ export default function App() {
       const p = tg.platform || "";
       setPlatform(p);
     }
+
+    const timer = setTimeout(() => setFadeDone(true), 120);
+    return () => clearTimeout(timer);
   }, []);
 
   const isDesktop =
@@ -945,6 +1155,16 @@ export default function App() {
       touchAction: "none",
     }}>
       <Scene />
+      <div style={{
+        position: "absolute",
+        top: 0, left: 0,
+        width: "100vw", height: "100vh",
+        background: "#000000",
+        opacity: fadeDone ? 0 : 1,
+        transition: "opacity 3.4s ease-out",
+        pointerEvents: "none",
+        zIndex: 50,
+      }} />
     </div>
   );
 }
