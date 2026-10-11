@@ -1072,7 +1072,7 @@ function CinematicCamera({
     };
   }, [gl, swayEnabled]);
 
-    useFrame(() => {
+  useFrame(() => {
     if (introStartRef.current == null) {
       camera.position.set(8.5, 3.5, 0);
       camera.lookAt(0, 1.5, 1.5);
@@ -1178,6 +1178,8 @@ function CinematicCamera({
     }
   });
 
+  return null;
+}
 function FpsMeter({ textRef }: { textRef: { current: HTMLDivElement | null } }) {
   const last = useRef(performance.now());
   const frameTimes = useRef<number[]>([]);
