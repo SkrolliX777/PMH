@@ -3,6 +3,8 @@ import type { ReactElement } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
+const INTRO_SLOW = 1.25;
+
 function applyDefaults(tex: THREE.CanvasTexture, repeatX = 1, repeatY = 1): THREE.CanvasTexture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(repeatX, repeatY);
@@ -183,7 +185,7 @@ function createChimneyTexture(): THREE.CanvasTexture {
   const c = document.createElement("canvas");
   c.width = 128; c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#1a1a1a";
+  ctx.fillStyle = "#6a6a6a";
   ctx.fillRect(0, 0, 128, 128);
 
   const brickH = 16;
@@ -196,10 +198,11 @@ function createChimneyTexture(): THREE.CanvasTexture {
     for (let x = -brickW; x < 128 + brickW; x += brickW) {
       const px = x + offsetX;
 
-      ctx.fillStyle = `rgba(${60 + Math.random() * 30}, ${55 + Math.random() * 25}, ${50 + Math.random() * 20}, 0.9)`;
+      const gray = 140 + Math.random() * 40;
+      ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray + 5})`;
       ctx.fillRect(px + 1, y + 1, brickW - 2, brickH - 2);
 
-      ctx.fillStyle = "rgba(20, 20, 20, 0.8)";
+      ctx.fillStyle = "rgba(80, 80, 80, 0.6)";
       for (let i = 0; i < 15; i++) {
         const dx = Math.random() * brickW;
         const dy = Math.random() * brickH;
@@ -208,9 +211,20 @@ function createChimneyTexture(): THREE.CanvasTexture {
     }
   }
 
+  // Швы между кирпичами — тёмно-серые
+  ctx.strokeStyle = "rgba(50, 50, 50, 0.9)";
+  ctx.lineWidth = 2;
+  for (let r = 0; r <= 128 / brickH; r++) {
+    const y = r * brickH;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(128, y);
+    ctx.stroke();
+  }
+
   const img = ctx.getImageData(0, 0, 128, 128);
   for (let i = 0; i < img.data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * 25;
+    const noise = (Math.random() - 0.5) * 20;
     img.data[i] = Math.max(0, Math.min(255, img.data[i] + noise));
     img.data[i + 1] = Math.max(0, Math.min(255, img.data[i + 1] + noise));
     img.data[i + 2] = Math.max(0, Math.min(255, img.data[i + 2] + noise));
@@ -440,7 +454,7 @@ function WelcomeSign() {
   );
 }
 
-function GableTriangle({ width = 2.4, height = 1.1 }: { width?: number; height?: number }) {
+function GableTriangle({ width, height, wallW, wallH }: { width: number; height: number; wallW: number; wallH: number }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     const verts = new Float32Array([
@@ -448,16 +462,22 @@ function GableTriangle({ width = 2.4, height = 1.1 }: { width?: number; height?:
        width / 2, 0, 0,
        0, height, 0,
     ]);
+    const uL = 0;
+    const uR = width / wallW;
+    const uT = width / wallW / 2;
+    const vB = 1;
+    const vT = 1 + height / wallH;
+
     const uvs = new Float32Array([
-      0, 0,
-      1, 0,
-      0.5, 1,
+      uL, vB,
+      uR, vB,
+      uT, vT,
     ]);
     g.setAttribute("position", new THREE.BufferAttribute(verts, 3));
     g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
     g.computeVertexNormals();
     return g;
-  }, [width, height]);
+  }, [width, height, wallW, wallH]);
 
   return <primitive object={geometry} attach="geometry" />;
 }
@@ -466,37 +486,43 @@ function FrontWindow({ x }: { x: number }) {
   const trimColor = "#5a3018";
   const D = 2.4;
   const y = 1.35;
-  const z = D / 2 + 0.005;
-  const zz = D / 2 + 0.02;
 
   return (
     <group>
-      <mesh position={[x, y, z]}>
+      <mesh position={[x, y, D / 2]}>
         <planeGeometry args={[0.6, 0.6]} />
         <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[x, y, zz]}>
-        <boxGeometry args={[0.68, 0.04, 0.01]} />
+
+      {/* Верхний наличник */}
+      <mesh position={[x, y + 0.33, D / 2]}>
+        <boxGeometry args={[0.72, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[x, y, zz]}>
-        <boxGeometry args={[0.04, 0.68, 0.01]} />
+      {/* Нижний наличник */}
+      <mesh position={[x, y - 0.33, D / 2]}>
+        <boxGeometry args={[0.72, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[x, y + 0.33, zz]}>
-        <boxGeometry args={[0.72, 0.06, 0.03]} />
+      {/* Левый */}
+      <mesh position={[x - 0.33, y, D / 2]}>
+        <boxGeometry args={[0.06, 0.72, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[x, y - 0.33, zz]}>
-        <boxGeometry args={[0.72, 0.06, 0.03]} />
+      {/* Правый */}
+      <mesh position={[x + 0.33, y, D / 2]}>
+        <boxGeometry args={[0.06, 0.72, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[x - 0.33, y, zz]}>
-        <boxGeometry args={[0.06, 0.72, 0.03]} />
+
+      {/* Горизонтальное перекрестие */}
+      <mesh position={[x, y, D / 2]}>
+        <boxGeometry args={[0.6, 0.04, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[x + 0.33, y, zz]}>
-        <boxGeometry args={[0.06, 0.72, 0.03]} />
+      {/* Вертикальное перекрестие */}
+      <mesh position={[x, y, D / 2]}>
+        <boxGeometry args={[0.04, 0.6, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
     </group>
@@ -655,33 +681,37 @@ function SideWall({ side }: { side: "left" | "right" }) {
         {mat}
       </mesh>
 
-      <mesh position={[0, winCY, 0.005]}>
+      {/* Стекло по центру стены, видно с двух сторон */}
+      <mesh position={[0, winCY, 0]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
         <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
 
-      <mesh position={[0, winCY + winH / 2 + 0.04, 0.01]}>
-        <boxGeometry args={[winW + 0.14, 0.06, 0.03]} />
+      {/* Рамы по центру — торчат в обе стороны */}
+      <mesh position={[0, winCY + winH / 2 + 0.04, 0]}>
+        <boxGeometry args={[winW + 0.14, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[0, winCY - winH / 2 - 0.04, 0.01]}>
-        <boxGeometry args={[winW + 0.14, 0.06, 0.03]} />
+      <mesh position={[0, winCY - winH / 2 - 0.04, 0]}>
+        <boxGeometry args={[winW + 0.14, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[-winW / 2 - 0.04, winCY, 0.01]}>
-        <boxGeometry args={[0.06, winH + 0.14, 0.03]} />
+      <mesh position={[-winW / 2 - 0.04, winCY, 0]}>
+        <boxGeometry args={[0.06, winH + 0.14, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[winW / 2 + 0.04, winCY, 0.01]}>
-        <boxGeometry args={[0.06, winH + 0.14, 0.03]} />
+      <mesh position={[winW / 2 + 0.04, winCY, 0]}>
+        <boxGeometry args={[0.06, winH + 0.14, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[0, winCY, 0.012]}>
-        <boxGeometry args={[winW + 0.08, 0.03, 0.01]} />
+
+      {/* Перекрестия по центру */}
+      <mesh position={[0, winCY, 0]}>
+        <boxGeometry args={[winW + 0.08, 0.04, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[0, winCY, 0.012]}>
-        <boxGeometry args={[0.03, winH + 0.08, 0.01]} />
+      <mesh position={[0, winCY, 0]}>
+        <boxGeometry args={[0.04, winH + 0.08, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
     </group>
@@ -759,12 +789,17 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
     if (doorRef.current && introStartRef.current != null) {
       const elapsed = (performance.now() - introStartRef.current) / 1000;
       let open = 0;
-      if (elapsed >= 3.0 && elapsed < 4.0) {
-        open = (elapsed - 3.0) / 1.0;
-      } else if (elapsed >= 4.0 && elapsed < 6.5) {
+      const oStart = 3.0 * INTRO_SLOW;
+      const oEnd = 4.0 * INTRO_SLOW;
+      const cStart = 6.5 * INTRO_SLOW;
+      const cEnd = 7.5 * INTRO_SLOW;
+
+      if (elapsed >= oStart && elapsed < oEnd) {
+        open = (elapsed - oStart) / (oEnd - oStart);
+      } else if (elapsed >= oEnd && elapsed < cStart) {
         open = 1;
-      } else if (elapsed >= 6.5 && elapsed < 7.5) {
-        open = 1 - (elapsed - 6.5) / 1.0;
+      } else if (elapsed >= cStart && elapsed < cEnd) {
+        open = 1 - (elapsed - cStart) / (cEnd - cStart);
       } else {
         open = 0;
       }
@@ -773,7 +808,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
     if (interiorRef.current && introStartRef.current != null) {
       const elapsed = (performance.now() - introStartRef.current) / 1000;
-      interiorRef.current.visible = elapsed < 9.0;
+      interiorRef.current.visible = elapsed < 9.0 * INTRO_SLOW;
     }
   });
 
@@ -827,29 +862,22 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
       </group>
 
       <mesh position={[0, H + 0.2, D / 2]}>
-        <GableTriangle width={W} height={ROOF_H} />
+        <GableTriangle width={W} height={ROOF_H} wallW={W} wallH={H} />
         {wallMat}
       </mesh>
       <mesh position={[0, H + 0.2, -D / 2]} rotation={[0, Math.PI, 0]}>
-        <GableTriangle width={W} height={ROOF_H} />
+        <GableTriangle width={W} height={ROOF_H} wallW={W} wallH={H} />
         {wallMat}
       </mesh>
 
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
+      {/* Круглое окно в фронтоне — по центру стены, рама наружу/внутрь */}
+      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2]}>
         <circleGeometry args={[0.24, 16]} />
         <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.025]}>
+      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2]}>
         <ringGeometry args={[0.24, 0.31, 16]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.03]}>
-        <boxGeometry args={[0.5, 0.03, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
-      </mesh>
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.03]}>
-        <boxGeometry args={[0.03, 0.5, 0.01]} />
-        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[-W / 4, H + 0.2 + ROOF_H / 2, 0]} rotation={[0, 0, roofAngle]}>
@@ -868,7 +896,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0.6, H + 0.2 + ROOF_H * 0.7, -0.3]}>
         <boxGeometry args={[0.32, 0.9, 0.32]} />
-        <meshStandardMaterial map={chimneyTex} color="#4a4a4a" roughness={0.9} metalness={0.05} />
+        <meshStandardMaterial map={chimneyTex} roughness={0.9} metalness={0.05} />
       </mesh>
       <Smoke x={0.6} y={H + 0.2 + ROOF_H * 0.7 + 0.5} z={-0.3} />
 
@@ -961,7 +989,7 @@ function Crates() {
   );
 }
 
-const INTRO_DRONE_START = 12.0;
+const INTRO_DRONE_START = 12.0 * INTRO_SLOW;
 const ORBIT_PERIOD = 20;
 const DRONE_PHASE_OFFSET = Math.PI - (INTRO_DRONE_START / ORBIT_PERIOD) * Math.PI * 2;
 
@@ -1105,9 +1133,11 @@ function CinematicCamera({
 
     const dom = gl.domElement;
     const MAX_ANGLE = 0.12;
+    let lockAxis: "x" | "y" | null = null;
 
     const onDown = (e: PointerEvent) => {
       swayActive.current = true;
+      lockAxis = null;
       touchStart.current = { x: e.clientX, y: e.clientY };
       swayTarget.current.x = 0;
       swayTarget.current.y = 0;
@@ -1117,17 +1147,29 @@ function CinematicCamera({
       if (!swayActive.current) return;
       const dx = e.clientX - touchStart.current.x;
       const dy = e.clientY - touchStart.current.y;
+
+      if (lockAxis === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        lockAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+
+      if (lockAxis === null) return;
+
       const rect = dom.getBoundingClientRect();
-      const nx = dx / (rect.width * 0.3);
-      const ny = dy / (rect.height * 0.3);
-      const cx = Math.max(-1, Math.min(1, nx));
-      const cy = Math.max(-1, Math.min(1, ny));
-      swayTarget.current.x = cx * MAX_ANGLE;
-      swayTarget.current.y = cy * MAX_ANGLE;
+
+      if (lockAxis === "x") {
+        const nx = dx / (rect.width * 0.3);
+        swayTarget.current.x = Math.max(-1, Math.min(1, nx)) * MAX_ANGLE;
+        swayTarget.current.y = 0;
+      } else {
+        const ny = dy / (rect.height * 0.3);
+        swayTarget.current.y = Math.max(-1, Math.min(1, ny)) * MAX_ANGLE;
+        swayTarget.current.x = 0;
+      }
     };
 
     const onUp = () => {
       swayActive.current = false;
+      lockAxis = null;
       swayTarget.current.x = 0;
       swayTarget.current.y = 0;
     };
@@ -1155,39 +1197,47 @@ function CinematicCamera({
     const elapsed = (performance.now() - introStartRef.current) / 1000;
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-    // A: 0–2.5 — стоим, смотрим вглубь дома
-    if (elapsed < 2.5) {
-      camera.position.set(0, -0.3, 0.3);
-      camera.lookAt(0, -0.3, -2.7);
+    const T_A = 2.5 * INTRO_SLOW;
+    const T_B = 5.0 * INTRO_SLOW;
+    const T_C = 9.0 * INTRO_SLOW;
+    const T_D = 12.0 * INTRO_SLOW;
+
+    const perspectiveCamera = camera as THREE.PerspectiveCamera;
+    const targetFov = elapsed < T_B ? 27.5 : 55;
+    if (perspectiveCamera.fov !== targetFov) {
+      perspectiveCamera.fov = targetFov;
+      perspectiveCamera.updateProjectionMatrix();
+    }
+
+    if (elapsed < T_A) {
+      camera.position.set(0, -0.34, 0.3);
+      camera.lookAt(0, -0.34, -2.7);
       return;
     }
 
-    // B: 2.5–5 — разворот на 180 в комнате через правую сторону
-    if (elapsed < 5.0) {
-      const t = (elapsed - 2.5) / 2.5;
+    if (elapsed < T_B) {
+      const t = (elapsed - T_A) / (T_B - T_A);
       const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(0, -0.3, 0.3);
+      camera.position.set(0, -0.34, 0.3);
 
       const dx = Math.sin(yaw) * 3;
       const dz = -Math.cos(yaw) * 3;
 
       camera.lookAt(
         camera.position.x + dx,
-        -0.3,
+        -0.34,
         camera.position.z + dz
       );
       return;
     }
 
-    // C: 5–9 — вылет вперёд через дверь + одновременно разворот ещё на 180
-    // ВАЖНО: НЕ поднимаемся по Y — просто выходим с вращением
-    if (elapsed < 9.0) {
-      const t = (elapsed - 5.0) / 4.0;
+    if (elapsed < T_C) {
+      const t = (elapsed - T_B) / (T_C - T_B);
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       const px = 0;
-      const py = -0.3;
+      const py = -0.34;
       const pz = 0.3 + et * 5.2;
 
       camera.position.set(px, py, pz);
@@ -1200,25 +1250,23 @@ function CinematicCamera({
       return;
     }
 
-    // D: 9–12 — плавный перелёт в точку орбиты (подъём здесь)
-    if (elapsed < 12.0) {
-      const t = (elapsed - 9.0) / 3.0;
+    if (elapsed < T_D) {
+      const t = (elapsed - T_C) / (T_D - T_C);
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       camera.position.set(
         0 + (8.5 - 0) * et,
-        -0.3 + (3.5 - (-0.3)) * et,
+        -0.34 + (3.5 - (-0.34)) * et,
         5.5 + (0 - 5.5) * et
       );
 
-      const lookY = -0.3 + (1.5 - (-0.3)) * et;
+      const lookY = -0.34 + (1.5 - (-0.34)) * et;
       const lookZ = 2.5 + (1.5 - 2.5) * et;
       camera.lookAt(0, lookY, lookZ);
       return;
     }
 
-    // E: 12+ — бесконечная орбита
-    const t = (elapsed - 12.0) / ORBIT_PERIOD;
+    const t = (elapsed - T_D) / ORBIT_PERIOD;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
@@ -1235,8 +1283,16 @@ function CinematicCamera({
       swayCurrent.current.x += (swayTarget.current.x - swayCurrent.current.x) * 0.08;
       swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.08;
 
-      camera.rotateY(swayCurrent.current.x);
-      camera.rotateX(swayCurrent.current.y);
+      const qY = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        swayCurrent.current.x
+      );
+      const qX = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0),
+        swayCurrent.current.y
+      );
+      const q = new THREE.Quaternion().multiplyQuaternions(qY, qX);
+      camera.quaternion.multiply(q);
     }
   });
 
@@ -1277,8 +1333,8 @@ function Scene() {
   const [swayEnabled, setSwayEnabled] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setShowHud(true), 12500);
-    const t2 = setTimeout(() => setSwayEnabled(true), 12200);
+    const t1 = setTimeout(() => setShowHud(true), 12500 * INTRO_SLOW);
+    const t2 = setTimeout(() => setSwayEnabled(true), 12200 * INTRO_SLOW);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -1347,7 +1403,7 @@ function Scene() {
       </button>
 
       <Canvas
-        camera={{ position: [0, -0.3, 0.3], fov: 55 }}
+        camera={{ position: [0, -0.34, 0.3], fov: 27.5 }}
         dpr={[0.8, 1]}
         gl={{
           antialias: false,
