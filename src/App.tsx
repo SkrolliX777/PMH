@@ -609,7 +609,6 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
   const H = 2.0;
   const D = 2.4;
   const ROOF_H = 1.2;
-  const doorW = 0.7;
   const doorH = 1.4;
 
   const wallColor = "#e8c8a0";
