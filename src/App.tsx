@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
@@ -103,7 +103,7 @@ function createWoodTexture(): THREE.CanvasTexture {
     ctx.lineTo(128, y + 20);
     ctx.stroke();
   }
-    return applyDefaults(new THREE.CanvasTexture(c), 1, 1);
+  return applyDefaults(new THREE.CanvasTexture(c), 1, 1);
 }
 
 function createRoofTexture(): THREE.CanvasTexture {
@@ -273,10 +273,6 @@ function Wall({ position, rotationY = 0 }: { position: [number, number, number];
             <planeGeometry args={[1.8, 0.9]} />
             <meshBasicMaterial color="#fff8d4" />
           </mesh>
-          <mesh position={[0, 0, 0.005]}>
-            <planeGeometry args={[2.8, 1.6]} />
-            <meshBasicMaterial color="#fff0b0" transparent opacity={0.35} />
-          </mesh>
         </group>
       ))}
     </group>
@@ -421,7 +417,7 @@ function FrontWindow({ x }: { x: number }) {
     <group>
       <mesh position={[x, y, z]}>
         <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color="#aaddff" transparent opacity={0.35} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#aaddff" />
       </mesh>
       <mesh position={[x, y, zz]}>
         <boxGeometry args={[0.68, 0.04, 0.01]} />
@@ -605,7 +601,7 @@ function SideWall({ side }: { side: "left" | "right" }) {
 
       <mesh position={[0, winCY, 0.005]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
-                <meshBasicMaterial color="#aaddff" />
+        <meshBasicMaterial color="#aaddff" />
       </mesh>
 
       <mesh position={[0, winCY + winH / 2 + 0.04, 0.01]}>
@@ -636,10 +632,50 @@ function SideWall({ side }: { side: "left" | "right" }) {
   );
 }
 
+function WallPart({
+  x,
+  y,
+  w,
+  h,
+  W,
+  H,
+  material,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  W: number;
+  H: number;
+  material: ReactElement;
+}) {
+  const geo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(w, h);
+    const uL = (x - w / 2 + W / 2) / W;
+    const uR = (x + w / 2 + W / 2) / W;
+    const vB = (y - h / 2 + H / 2) / H;
+    const vT = (y + h / 2 + H / 2) / H;
+    const uv = g.attributes.uv as THREE.BufferAttribute;
+    uv.setXY(0, uL, vT);
+    uv.setXY(1, uR, vT);
+    uv.setXY(2, uL, vB);
+    uv.setXY(3, uR, vB);
+    uv.needsUpdate = true;
+    return g;
+  }, [x, y, w, h, W, H]);
+
+  return (
+    <mesh position={[x, y, 0]} geometry={geo}>
+      {material}
+    </mesh>
+  );
+}
+
 function House({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const woodTex = getTex("wood", createWoodTexture);
   const roofTex = getTex("roof", createRoofTexture);
   const doorRef = useRef<THREE.Group>(null);
+  const interiorRef = useRef<THREE.Group>(null);
 
   const W = 2.4;
   const H = 2.0;
@@ -663,10 +699,9 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
   );
 
   useFrame(() => {
-    if (!doorRef.current) return;
-    let open = 0;
-    if (introStartRef.current != null) {
+    if (doorRef.current && introStartRef.current != null) {
       const elapsed = (performance.now() - introStartRef.current) / 1000;
+      let open = 0;
       if (elapsed >= 3.0 && elapsed < 4.0) {
         open = (elapsed - 3.0) / 1.0;
       } else if (elapsed >= 4.0 && elapsed < 6.5) {
@@ -676,8 +711,13 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
       } else {
         open = 0;
       }
+      doorRef.current.rotation.y = open * Math.PI / 2;
     }
-    doorRef.current.rotation.y = open * Math.PI / 2;
+
+    if (interiorRef.current && introStartRef.current != null) {
+      const elapsed = (performance.now() - introStartRef.current) / 1000;
+      interiorRef.current.visible = elapsed < 8.0;
+    }
   });
 
   const wallBottom = -H / 2;
@@ -700,7 +740,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <meshStandardMaterial color="#5a5a60" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      <mesh position={[0, H / 2 + 0.2, -D / 2]}>
+      <mesh position={[0, H / 2 + 0.2, -D / 2]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[W, H]} />
         {wallMat}
       </mesh>
@@ -708,50 +748,26 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
       <SideWall side="left" />
       <SideWall side="right" />
 
-      <mesh position={[(-W / 2 + winLeftX) / 2, H / 2 + 0.2, D / 2]}>
-        <planeGeometry args={[winLeftX - (-W / 2), H]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[(winRightX + doorLeftX) / 2, H / 2 + 0.2, D / 2]}>
-        <planeGeometry args={[doorLeftX - winRightX, H]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[(doorRightX + win2LeftX) / 2, H / 2 + 0.2, D / 2]}>
-        <planeGeometry args={[win2LeftX - doorRightX, H]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[(win2RightX + W / 2) / 2, H / 2 + 0.2, D / 2]}>
-        <planeGeometry args={[W / 2 - win2RightX, H]} />
-        {wallMat}
-      </mesh>
-
-      <mesh position={[winLeftX + winW / 2, H / 2 + 0.2 + (wallBottom + winBottom) / 2, D / 2]}>
-        <planeGeometry args={[winW, winBottom - wallBottom]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[win2LeftX + winW / 2, H / 2 + 0.2 + (wallBottom + winBottom) / 2, D / 2]}>
-        <planeGeometry args={[winW, winBottom - wallBottom]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[winLeftX + winW / 2, H / 2 + 0.2 + (winTop + wallTop) / 2, D / 2]}>
-        <planeGeometry args={[winW, wallTop - winTop]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[win2LeftX + winW / 2, H / 2 + 0.2 + (winTop + wallTop) / 2, D / 2]}>
-        <planeGeometry args={[winW, wallTop - winTop]} />
-        {wallMat}
-      </mesh>
-      <mesh position={[0, H / 2 + 0.2 + (doorTop + wallTop) / 2, D / 2]}>
-        <planeGeometry args={[doorW, wallTop - doorTop]} />
-        {wallMat}
-      </mesh>
+      <group position={[0, H / 2 + 0.2, D / 2]}>
+        <WallPart x={(-W / 2 + winLeftX) / 2} y={0} w={winLeftX - (-W / 2)} h={H} W={W} H={H} material={wallMat} />
+        <WallPart x={(winRightX + doorLeftX) / 2} y={0} w={doorLeftX - winRightX} h={H} W={W} H={H} material={wallMat} />
+        <WallPart x={(doorRightX + win2LeftX) / 2} y={0} w={win2LeftX - doorRightX} h={H} W={W} H={H} material={wallMat} />
+        <WallPart x={(win2RightX + W / 2) / 2} y={0} w={W / 2 - win2RightX} h={H} W={W} H={H} material={wallMat} />
+        <WallPart x={winLeftX + winW / 2} y={(wallBottom + winBottom) / 2} w={winW} h={winBottom - wallBottom} W={W} H={H} material={wallMat} />
+        <WallPart x={win2LeftX + winW / 2} y={(wallBottom + winBottom) / 2} w={winW} h={winBottom - wallBottom} W={W} H={H} material={wallMat} />
+        <WallPart x={winLeftX + winW / 2} y={(winTop + wallTop) / 2} w={winW} h={wallTop - winTop} W={W} H={H} material={wallMat} />
+        <WallPart x={win2LeftX + winW / 2} y={(winTop + wallTop) / 2} w={winW} h={wallTop - winTop} W={W} H={H} material={wallMat} />
+        <WallPart x={0} y={(doorTop + wallTop) / 2} w={doorW} h={wallTop - doorTop} W={W} H={H} material={wallMat} />
+      </group>
 
       <mesh position={[0, H + 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[W, D]} />
         <meshStandardMaterial color={wallColor} roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
 
-      <HouseInterior />
+      <group ref={interiorRef}>
+        <HouseInterior />
+      </group>
 
       <mesh position={[0, H + 0.2, D / 2]}>
         <GableTriangle width={W} height={ROOF_H} />
@@ -764,7 +780,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
         <circleGeometry args={[0.24, 16]} />
-        <meshBasicMaterial color="#aaddff" transparent opacity={0.4} />
+        <meshBasicMaterial color="#aaddff" />
       </mesh>
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.025]}>
         <ringGeometry args={[0.24, 0.31, 16]} />
@@ -888,7 +904,7 @@ function Crates() {
   );
 }
 
-const INTRO_DRONE_START = 12.0;
+const INTRO_DRONE_START = 11.0;
 const ORBIT_PERIOD = 20;
 const DRONE_PHASE_OFFSET = Math.PI - (INTRO_DRONE_START / ORBIT_PERIOD) * Math.PI * 2;
 
@@ -1082,12 +1098,14 @@ function CinematicCamera({
     const elapsed = (performance.now() - introStartRef.current) / 1000;
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
+    // A: 0–2.5 — стоим, смотрим вглубь дома
     if (elapsed < 2.5) {
       camera.position.set(0, -0.5, 0.3);
       camera.lookAt(0, -0.5, -2.7);
       return;
     }
 
+    // B: 2.5–5 — разворот на 180 в комнате через правую сторону
     if (elapsed < 5.0) {
       const t = (elapsed - 2.5) / 2.5;
       const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
@@ -1105,43 +1123,36 @@ function CinematicCamera({
       return;
     }
 
-    if (elapsed < 7.5) {
-      const t = (elapsed - 5.0) / 2.5;
+    // C: 5–8 — ВЫЛЕТ + одновременный разворот ещё на 180
+    // Камера летит из (0,-0.5,0.3) в (0,-0.1,5.5)
+    // Угол поворота: от 0 (смотрим в +Z) до π (смотрим в -Z, на дом)
+    if (elapsed < 8.0) {
+      const t = (elapsed - 5.0) / 3.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
+      // позиция — линейная интерполяция
       camera.position.set(
         0,
         -0.5 + et * 0.4,
         0.3 + et * 5.2
       );
 
-      camera.lookAt(
-        0,
-        -0.5 + et * 0.2,
-        camera.position.z + 3
-      );
-      return;
-    }
-
-    if (elapsed < 9.5) {
-      const t = (elapsed - 7.5) / 2.0;
-      const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
-
-      camera.position.set(0, -0.1, 5.5);
-
+      // поворот — 0 → π. Смотрим сначала в +Z (на дверь), потом разворачиваемся
+      const yaw = et * Math.PI;
       const dx = Math.sin(yaw) * 3;
       const dz = Math.cos(yaw) * 3;
 
       camera.lookAt(
         camera.position.x + dx,
-        -0.3,
+        camera.position.y - 0.15,
         camera.position.z + dz
       );
       return;
     }
 
-    if (elapsed < 12.0) {
-      const t = (elapsed - 9.5) / 2.5;
+    // D: 8–11 — плавный переход к орбите, взгляд уже на дом
+    if (elapsed < 11.0) {
+      const t = (elapsed - 8.0) / 3.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       camera.position.set(
@@ -1150,13 +1161,15 @@ function CinematicCamera({
         5.5 + (0 - 5.5) * et
       );
 
+      const lookX = 0 + (0 - 0) * et;
       const lookY = -0.3 + (1.5 - (-0.3)) * et;
       const lookZ = 2.5 + (1.5 - 2.5) * et;
-      camera.lookAt(0, lookY, lookZ);
+      camera.lookAt(lookX, lookY, lookZ);
       return;
     }
 
-    const t = (elapsed - 12.0) / ORBIT_PERIOD;
+    // E: 11+ — бесконечная орбита
+    const t = (elapsed - 11.0) / ORBIT_PERIOD;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
@@ -1180,6 +1193,7 @@ function CinematicCamera({
 
   return null;
 }
+
 function FpsMeter({ textRef }: { textRef: { current: HTMLDivElement | null } }) {
   const last = useRef(performance.now());
   const frameTimes = useRef<number[]>([]);
@@ -1214,8 +1228,8 @@ function Scene() {
   const [swayEnabled, setSwayEnabled] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setShowHud(true), 12500);
-    const t2 = setTimeout(() => setSwayEnabled(true), 12200);
+    const t1 = setTimeout(() => setShowHud(true), 11500);
+    const t2 = setTimeout(() => setSwayEnabled(true), 11200);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -1285,9 +1299,9 @@ function Scene() {
 
       <Canvas
         camera={{ position: [0, -0.5, 0.3], fov: 55 }}
-        dpr={[1, 1.5]}
+        dpr={[0.8, 1]}
         gl={{
-          antialias: true,
+          antialias: false,
           alpha: false,
           powerPreference: "high-performance",
           stencil: false,
