@@ -94,15 +94,16 @@ function createWoodTexture(): THREE.CanvasTexture {
   const ctx = c.getContext("2d")!;
   ctx.fillStyle = "#d8b890";
   ctx.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 6; i++) {
-    const y = i * 22;
+  // 8 плотных горизонтальных полос по 16px
+  for (let i = 0; i < 8; i++) {
+    const y = i * 16;
     ctx.fillStyle = `rgba(160, 120, 70, ${0.15 + Math.random() * 0.2})`;
-    ctx.fillRect(0, y, 128, 20);
+    ctx.fillRect(0, y, 128, 14);
     ctx.strokeStyle = "#a07850";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, y + 20);
-    ctx.lineTo(128, y + 20);
+    ctx.moveTo(0, y + 15);
+    ctx.lineTo(128, y + 15);
     ctx.stroke();
   }
   return applyDefaults(new THREE.CanvasTexture(c), 1, 1);
@@ -211,7 +212,6 @@ function createChimneyTexture(): THREE.CanvasTexture {
     }
   }
 
-  // Швы между кирпичами — тёмно-серые
   ctx.strokeStyle = "rgba(50, 50, 50, 0.9)";
   ctx.lineWidth = 2;
   for (let r = 0; r <= 128 / brickH; r++) {
@@ -311,6 +311,109 @@ const texCache: Record<string, THREE.CanvasTexture> = {};
 function getTex(name: string, factory: () => THREE.CanvasTexture): THREE.CanvasTexture {
   if (!texCache[name]) texCache[name] = factory();
   return texCache[name];
+}
+
+function useClockTexture(): THREE.CanvasTexture {
+  const canvas = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    return c;
+  }, []);
+
+  const tex = useMemo(() => {
+    const t = new THREE.CanvasTexture(canvas);
+    t.minFilter = THREE.LinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+    t.anisotropy = 1;
+    return t;
+  }, [canvas]);
+
+  useEffect(() => {
+    const draw = () => {
+      const ctx = canvas.getContext("2d")!;
+      const now = new Date();
+      const hours = now.getHours() % 12;
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+
+      ctx.clearRect(0, 0, 256, 256);
+
+      ctx.fillStyle = "#f5ead0";
+      ctx.beginPath();
+      ctx.arc(128, 128, 118, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#3a2510";
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        const isMain = i % 3 === 0;
+        const r1 = isMain ? 88 : 100;
+        const r2 = 108;
+        const x1 = 128 + Math.cos(angle) * r1;
+        const y1 = 128 + Math.sin(angle) * r1;
+        const x2 = 128 + Math.cos(angle) * r2;
+        const y2 = 128 + Math.sin(angle) * r2;
+        ctx.strokeStyle = "#3a2510";
+        ctx.lineWidth = isMain ? 7 : 3;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#3a2510";
+      ctx.font = "bold 34px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("12", 128, 52);
+      ctx.fillText("3", 204, 128);
+      ctx.fillText("6", 128, 204);
+      ctx.fillText("9", 52, 128);
+
+      const hourAngle = ((hours + minutes / 60) / 12) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = "#1a1a20";
+      ctx.lineWidth = 9;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(128, 128);
+      ctx.lineTo(128 + Math.cos(hourAngle) * 55, 128 + Math.sin(hourAngle) * 55);
+      ctx.stroke();
+
+      const minAngle = ((minutes + seconds / 60) / 60) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = "#1a1a20";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(128, 128);
+      ctx.lineTo(128 + Math.cos(minAngle) * 85, 128 + Math.sin(minAngle) * 85);
+      ctx.stroke();
+
+      const secAngle = (seconds / 60) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = "#c03020";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(128, 128);
+      ctx.lineTo(128 + Math.cos(secAngle) * 95, 128 + Math.sin(secAngle) * 95);
+      ctx.stroke();
+
+      ctx.fillStyle = "#1a1a20";
+      ctx.beginPath();
+      ctx.arc(128, 128, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      tex.needsUpdate = true;
+    };
+
+    draw();
+    const id = setInterval(draw, 1000);
+    return () => clearInterval(id);
+  }, [canvas, tex]);
+
+  return tex;
 }
 
 function Wall({ position, rotationY = 0 }: { position: [number, number, number]; rotationY?: number }) {
@@ -482,6 +585,47 @@ function GableTriangle({ width, height, wallW, wallH }: { width: number; height:
   return <primitive object={geometry} attach="geometry" />;
 }
 
+function WallPart({
+  x,
+  y,
+  w,
+  h,
+  W,
+  H,
+  material,
+  zOffset = 0,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  W: number;
+  H: number;
+  material: ReactElement;
+  zOffset?: number;
+}) {
+  const geo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(w, h);
+    const uL = (x - w / 2 + W / 2) / W;
+    const uR = (x + w / 2 + W / 2) / W;
+    const vB = (y - h / 2 + H / 2) / H;
+    const vT = (y + h / 2 + H / 2) / H;
+    const uv = g.attributes.uv as THREE.BufferAttribute;
+    uv.setXY(0, uL, vT);
+    uv.setXY(1, uR, vT);
+    uv.setXY(2, uL, vB);
+    uv.setXY(3, uR, vB);
+    uv.needsUpdate = true;
+    return g;
+  }, [x, y, w, h, W, H]);
+
+  return (
+    <mesh position={[x, y, zOffset]} geometry={geo}>
+      {material}
+    </mesh>
+  );
+}
+
 function FrontWindow({ x }: { x: number }) {
   const trimColor = "#5a3018";
   const D = 2.4;
@@ -494,33 +638,27 @@ function FrontWindow({ x }: { x: number }) {
         <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Верхний наличник */}
       <mesh position={[x, y + 0.33, D / 2]}>
         <boxGeometry args={[0.72, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      {/* Нижний наличник */}
       <mesh position={[x, y - 0.33, D / 2]}>
         <boxGeometry args={[0.72, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      {/* Левый */}
       <mesh position={[x - 0.33, y, D / 2]}>
         <boxGeometry args={[0.06, 0.72, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      {/* Правый */}
       <mesh position={[x + 0.33, y, D / 2]}>
         <boxGeometry args={[0.06, 0.72, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
 
-      {/* Горизонтальное перекрестие */}
       <mesh position={[x, y, D / 2]}>
         <boxGeometry args={[0.6, 0.04, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
-      {/* Вертикальное перекрестие */}
       <mesh position={[x, y, D / 2]}>
         <boxGeometry args={[0.04, 0.6, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
@@ -664,30 +802,20 @@ function SideWall({ side }: { side: "left" | "right" }) {
 
   return (
     <group position={[xPos, H / 2 + 0.2, 0]} rotation={[0, rotY, 0]}>
-      <mesh position={[0, (wallBottom + winBottom) / 2, 0]}>
-        <planeGeometry args={[D, winBottom - wallBottom]} />
-        {mat}
-      </mesh>
-      <mesh position={[0, (winTop + wallTop) / 2, 0]}>
-        <planeGeometry args={[D, wallTop - winTop]} />
-        {mat}
-      </mesh>
-      <mesh position={[-D / 2 + (winLeft + D / 2) / 2, winCY, 0]}>
-        <planeGeometry args={[winLeft - (-D / 2), winH]} />
-        {mat}
-      </mesh>
-      <mesh position={[(winRight + D / 2) / 2, winCY, 0]}>
-        <planeGeometry args={[D / 2 - winRight, winH]} />
-        {mat}
-      </mesh>
+      {/* Полоса под окном — общая W = D */}
+      <WallPart x={0} y={(wallBottom + winBottom) / 2} w={D} h={winBottom - wallBottom} W={D} H={H} material={mat} />
+      {/* Полоса над окном */}
+      <WallPart x={0} y={(winTop + wallTop) / 2} w={D} h={wallTop - winTop} W={D} H={H} material={mat} />
+      {/* Слева от окна */}
+      <WallPart x={-D / 2 + (winLeft + D / 2) / 2} y={winCY} w={winLeft - (-D / 2)} h={winH} W={D} H={H} material={mat} />
+      {/* Справа от окна */}
+      <WallPart x={(winRight + D / 2) / 2} y={winCY} w={D / 2 - winRight} h={winH} W={D} H={H} material={mat} />
 
-      {/* Стекло по центру стены, видно с двух сторон */}
       <mesh position={[0, winCY, 0]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
         <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Рамы по центру — торчат в обе стороны */}
       <mesh position={[0, winCY + winH / 2 + 0.04, 0]}>
         <boxGeometry args={[winW + 0.14, 0.06, 0.1]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
@@ -705,7 +833,6 @@ function SideWall({ side }: { side: "left" | "right" }) {
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
       </mesh>
 
-      {/* Перекрестия по центру */}
       <mesh position={[0, winCY, 0]}>
         <boxGeometry args={[winW + 0.08, 0.04, 0.08]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} />
@@ -718,49 +845,11 @@ function SideWall({ side }: { side: "left" | "right" }) {
   );
 }
 
-function WallPart({
-  x,
-  y,
-  w,
-  h,
-  W,
-  H,
-  material,
-}: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  W: number;
-  H: number;
-  material: ReactElement;
-}) {
-  const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(w, h);
-    const uL = (x - w / 2 + W / 2) / W;
-    const uR = (x + w / 2 + W / 2) / W;
-    const vB = (y - h / 2 + H / 2) / H;
-    const vT = (y + h / 2 + H / 2) / H;
-    const uv = g.attributes.uv as THREE.BufferAttribute;
-    uv.setXY(0, uL, vT);
-    uv.setXY(1, uR, vT);
-    uv.setXY(2, uL, vB);
-    uv.setXY(3, uR, vB);
-    uv.needsUpdate = true;
-    return g;
-  }, [x, y, w, h, W, H]);
-
-  return (
-    <mesh position={[x, y, 0]} geometry={geo}>
-      {material}
-    </mesh>
-  );
-}
-
 function House({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const woodTex = getTex("wood", createWoodTexture);
   const roofTex = getTex("roof", createRoofTexture);
   const chimneyTex = getTex("chimney", createChimneyTexture);
+  const clockTex = useClockTexture();
   const doorRef = useRef<THREE.Group>(null);
   const interiorRef = useRef<THREE.Group>(null);
 
@@ -832,10 +921,10 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <meshStandardMaterial color="#5a5a60" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      <mesh position={[0, H / 2 + 0.2, -D / 2]}>
-        <planeGeometry args={[W, H]} />
-        {wallMat}
-      </mesh>
+      {/* Задняя стена — тот же WallPart, что и передняя, чтобы текстура совпадала */}
+      <group position={[0, H / 2 + 0.2, -D / 2]} rotation={[0, Math.PI, 0]}>
+        <WallPart x={0} y={0} w={W} h={H} W={W} H={H} material={wallMat} />
+      </group>
 
       <SideWall side="left" />
       <SideWall side="right" />
@@ -870,13 +959,13 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         {wallMat}
       </mesh>
 
-      {/* Круглое окно в фронтоне — по центру стены, рама наружу/внутрь */}
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2]}>
-        <circleGeometry args={[0.24, 16]} />
-        <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
+      {/* Часы в фронтоне вместо окна */}
+      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
+        <circleGeometry args={[0.3, 32]} />
+        <meshBasicMaterial map={clockTex} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2]}>
-        <ringGeometry args={[0.24, 0.31, 16]} />
+      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
+        <ringGeometry args={[0.3, 0.37, 32]} />
         <meshStandardMaterial color={trimColor} roughness={0.5} metalness={0.15} side={THREE.DoubleSide} />
       </mesh>
 
@@ -1202,9 +1291,18 @@ function CinematicCamera({
     const T_C = 9.0 * INTRO_SLOW;
     const T_D = 12.0 * INTRO_SLOW;
 
+    // Плавный переход FOV: 90° внутри дома → 55° снаружи
     const perspectiveCamera = camera as THREE.PerspectiveCamera;
-    const targetFov = elapsed < T_B ? 27.5 : 55;
-    if (perspectiveCamera.fov !== targetFov) {
+    const FOV_INSIDE = 90;
+    const FOV_OUTSIDE = 55;
+    const FOV_TRANSITION = 1.5;
+
+    let targetFov = FOV_INSIDE;
+    if (elapsed >= T_B) {
+      const fovT = Math.min(1, (elapsed - T_B) / FOV_TRANSITION);
+      targetFov = FOV_INSIDE + (FOV_OUTSIDE - FOV_INSIDE) * smoothstep(fovT);
+    }
+    if (Math.abs(perspectiveCamera.fov - targetFov) > 0.05) {
       perspectiveCamera.fov = targetFov;
       perspectiveCamera.updateProjectionMatrix();
     }
@@ -1403,7 +1501,7 @@ function Scene() {
       </button>
 
       <Canvas
-        camera={{ position: [0, -0.34, 0.3], fov: 27.5 }}
+        camera={{ position: [0, -0.34, 0.3], fov: 90 }}
         dpr={[0.8, 1]}
         gl={{
           antialias: false,
