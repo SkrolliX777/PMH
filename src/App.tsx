@@ -179,6 +179,54 @@ function createRoofTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+function createChimneyTexture(): THREE.CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(0, 0, 128, 128);
+
+  const brickH = 16;
+  const brickW = 24;
+
+  for (let r = 0; r < 128 / brickH; r++) {
+    const y = r * brickH;
+    const offsetX = (r % 2) * (brickW / 2);
+
+    for (let x = -brickW; x < 128 + brickW; x += brickW) {
+      const px = x + offsetX;
+
+      ctx.fillStyle = `rgba(${60 + Math.random() * 30}, ${55 + Math.random() * 25}, ${50 + Math.random() * 20}, 0.9)`;
+      ctx.fillRect(px + 1, y + 1, brickW - 2, brickH - 2);
+
+      ctx.fillStyle = "rgba(20, 20, 20, 0.8)";
+      for (let i = 0; i < 15; i++) {
+        const dx = Math.random() * brickW;
+        const dy = Math.random() * brickH;
+        ctx.fillRect(px + dx, y + dy, 1, 1);
+      }
+    }
+  }
+
+  const img = ctx.getImageData(0, 0, 128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 25;
+    img.data[i] = Math.max(0, Math.min(255, img.data[i] + noise));
+    img.data[i + 1] = Math.max(0, Math.min(255, img.data[i + 1] + noise));
+    img.data[i + 2] = Math.max(0, Math.min(255, img.data[i + 2] + noise));
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 2);
+  tex.anisotropy = 1;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
 function createSmokeTexture(): THREE.CanvasTexture {
   const c = document.createElement("canvas");
   c.width = 128; c.height = 128;
@@ -393,20 +441,24 @@ function WelcomeSign() {
 }
 
 function GableTriangle({ width = 2.4, height = 1.1 }: { width?: number; height?: number }) {
-  const geometry = new THREE.BufferGeometry();
-  const verts = new Float32Array([
-    -width / 2, 0, 0,
-     width / 2, 0, 0,
-     0, height, 0,
-  ]);
-  const uvs = new Float32Array([
-    0, 0,
-    1, 0,
-    0.5, 1,
-  ]);
-  geometry.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-  geometry.computeVertexNormals();
+  const geometry = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const verts = new Float32Array([
+      -width / 2, 0, 0,
+       width / 2, 0, 0,
+       0, height, 0,
+    ]);
+    const uvs = new Float32Array([
+      0, 0,
+      1, 0,
+      0.5, 1,
+    ]);
+    g.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+    g.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    g.computeVertexNormals();
+    return g;
+  }, [width, height]);
+
   return <primitive object={geometry} attach="geometry" />;
 }
 
@@ -421,7 +473,7 @@ function FrontWindow({ x }: { x: number }) {
     <group>
       <mesh position={[x, y, z]}>
         <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color="#ffcc70" />
+        <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[x, y, zz]}>
         <boxGeometry args={[0.68, 0.04, 0.01]} />
@@ -605,7 +657,7 @@ function SideWall({ side }: { side: "left" | "right" }) {
 
       <mesh position={[0, winCY, 0.005]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
-        <meshBasicMaterial color="#ffcc70" />
+        <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[0, winCY + winH / 2 + 0.04, 0.01]}>
@@ -678,6 +730,7 @@ function WallPart({
 function House({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
   const woodTex = getTex("wood", createWoodTexture);
   const roofTex = getTex("roof", createRoofTexture);
+  const chimneyTex = getTex("chimney", createChimneyTexture);
   const doorRef = useRef<THREE.Group>(null);
   const interiorRef = useRef<THREE.Group>(null);
 
@@ -784,7 +837,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
         <circleGeometry args={[0.24, 16]} />
-        <meshBasicMaterial color="#ffcc70" />
+        <meshBasicMaterial color="#ffcc70" side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.025]}>
         <ringGeometry args={[0.24, 0.31, 16]} />
@@ -815,7 +868,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0.6, H + 0.2 + ROOF_H * 0.7, -0.3]}>
         <boxGeometry args={[0.32, 0.9, 0.32]} />
-        <meshStandardMaterial color="#8a3a20" roughness={0.6} metalness={0.15} />
+        <meshStandardMaterial map={chimneyTex} color="#4a4a4a" roughness={0.9} metalness={0.05} />
       </mesh>
       <Smoke x={0.6} y={H + 0.2 + ROOF_H * 0.7 + 0.5} z={-0.3} />
 
@@ -1102,10 +1155,10 @@ function CinematicCamera({
     const elapsed = (performance.now() - introStartRef.current) / 1000;
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-    // A: 0–2.5 — стоим в центре дома, смотрим вглубь
+    // A: 0–2.5 — стоим, смотрим вглубь дома
     if (elapsed < 2.5) {
-      camera.position.set(0, -0.5, 0.3);
-      camera.lookAt(0, -0.5, -2.7);
+      camera.position.set(0, -0.3, 0.3);
+      camera.lookAt(0, -0.3, -2.7);
       return;
     }
 
@@ -1114,28 +1167,27 @@ function CinematicCamera({
       const t = (elapsed - 2.5) / 2.5;
       const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(0, -0.5, 0.3);
+      camera.position.set(0, -0.3, 0.3);
 
       const dx = Math.sin(yaw) * 3;
       const dz = -Math.cos(yaw) * 3;
 
       camera.lookAt(
         camera.position.x + dx,
-        -0.5,
+        -0.3,
         camera.position.z + dz
       );
       return;
     }
 
     // C: 5–9 — вылет вперёд через дверь + одновременно разворот ещё на 180
-    // Позиция: (0, -0.5, 0.3) → (0, 1.5, 5.5)
-    // Yaw: 0 → π (смотрит вперёд, потом назад на дом)
+    // ВАЖНО: НЕ поднимаемся по Y — просто выходим с вращением
     if (elapsed < 9.0) {
       const t = (elapsed - 5.0) / 4.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       const px = 0;
-      const py = -0.5 + et * 2.0;
+      const py = -0.3;
       const pz = 0.3 + et * 5.2;
 
       camera.position.set(px, py, pz);
@@ -1148,20 +1200,18 @@ function CinematicCamera({
       return;
     }
 
-    // D: 9–12 — плавный перелёт в точку орбиты
-    // Позиция: (0, 1.5, 5.5) → (8.5, 3.5, 0)
-    // lookAt: (0, 1.5, 2.5) → (0, 1.5, 1.5)
+    // D: 9–12 — плавный перелёт в точку орбиты (подъём здесь)
     if (elapsed < 12.0) {
       const t = (elapsed - 9.0) / 3.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       camera.position.set(
         0 + (8.5 - 0) * et,
-        1.5 + (3.5 - 1.5) * et,
+        -0.3 + (3.5 - (-0.3)) * et,
         5.5 + (0 - 5.5) * et
       );
 
-      const lookY = 1.5;
+      const lookY = -0.3 + (1.5 - (-0.3)) * et;
       const lookZ = 2.5 + (1.5 - 2.5) * et;
       camera.lookAt(0, lookY, lookZ);
       return;
@@ -1297,7 +1347,7 @@ function Scene() {
       </button>
 
       <Canvas
-        camera={{ position: [0, -0.5, 0.3], fov: 55 }}
+        camera={{ position: [0, -0.3, 0.3], fov: 55 }}
         dpr={[0.8, 1]}
         gl={{
           antialias: false,
