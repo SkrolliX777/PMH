@@ -1072,7 +1072,7 @@ function CinematicCamera({
     };
   }, [gl, swayEnabled]);
 
-  useFrame(() => {
+    useFrame(() => {
     if (introStartRef.current == null) {
       camera.position.set(8.5, 3.5, 0);
       camera.lookAt(0, 1.5, 1.5);
@@ -1083,8 +1083,8 @@ function CinematicCamera({
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
     if (elapsed < 2.5) {
-      camera.position.set(0, -1.4, 0.3);
-      camera.lookAt(0, -1.5, -2.7);
+      camera.position.set(0, -0.5, 0.3);
+      camera.lookAt(0, -0.5, -2.7);
       return;
     }
 
@@ -1092,14 +1092,14 @@ function CinematicCamera({
       const t = (elapsed - 2.5) / 2.5;
       const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(0, -1.4, 0.3);
+      camera.position.set(0, -0.5, 0.3);
 
       const dx = Math.sin(yaw) * 3;
       const dz = -Math.cos(yaw) * 3;
 
       camera.lookAt(
         camera.position.x + dx,
-        camera.position.y - 0.1,
+        -0.5,
         camera.position.z + dz
       );
       return;
@@ -1111,11 +1111,15 @@ function CinematicCamera({
 
       camera.position.set(
         0,
-        -1.4 + et * 0.2,
+        -0.5 + et * 0.4,
         0.3 + et * 5.2
       );
 
-      camera.lookAt(0, camera.position.y - 0.1, camera.position.z + 3);
+      camera.lookAt(
+        0,
+        -0.5 + et * 0.2,
+        camera.position.z + 3
+      );
       return;
     }
 
@@ -1123,14 +1127,14 @@ function CinematicCamera({
       const t = (elapsed - 7.5) / 2.0;
       const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-      camera.position.set(0, -1.2, 5.5);
+      camera.position.set(0, -0.1, 5.5);
 
       const dx = Math.sin(yaw) * 3;
       const dz = Math.cos(yaw) * 3;
 
       camera.lookAt(
         camera.position.x + dx,
-        camera.position.y + 1.2,
+        -0.3,
         camera.position.z + dz
       );
       return;
@@ -1142,11 +1146,11 @@ function CinematicCamera({
 
       camera.position.set(
         0 + (8.5 - 0) * et,
-        -1.2 + (3.5 - (-1.2)) * et,
+        -0.1 + (3.5 - (-0.1)) * et,
         5.5 + (0 - 5.5) * et
       );
 
-      const lookY = 0 + (1.5 - 0) * et;
+      const lookY = -0.3 + (1.5 - (-0.3)) * et;
       const lookZ = 2.5 + (1.5 - 2.5) * et;
       camera.lookAt(0, lookY, lookZ);
       return;
@@ -1173,9 +1177,6 @@ function CinematicCamera({
       camera.rotateX(-swayCurrent.current.y);
     }
   });
-
-  return null;
-}
 
 function FpsMeter({ textRef }: { textRef: { current: HTMLDivElement | null } }) {
   const last = useRef(performance.now());
@@ -1281,7 +1282,7 @@ function Scene() {
       </button>
 
       <Canvas
-        camera={{ position: [0, -1.4, 0.3], fov: 55 }}
+        camera={{ position: [0, -0.5, 0.3], fov: 55 }}
         dpr={[1, 1.5]}
         gl={{
           antialias: true,
