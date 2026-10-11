@@ -1010,27 +1010,6 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
     </group>
   );
 }
-
-type Keyframe = { t: number; pos: [number, number, number]; look: [number, number, number] };
-
-const CAMERA_KEYFRAMES: Keyframe[] = [
-  { t: 0.0,  pos: [0, -0.4, 0.75], look: [0, -0.9, -1.18] },
-  { t: 2.5,  pos: [0, -0.4, 0.75], look: [0, -0.9, -1.18] },
-  { t: 4.5,  pos: [0, -0.4, 0.75], look: [0, -0.6, 1.21] },
-  { t: 5.2,  pos: [0, -0.2, 1.3],  look: [0, -0.3, 2.0] },
-  { t: 7.5,  pos: [0, 0.5, 5.5],   look: [0, 0.8, 7.5] },
-  { t: 9.0,  pos: [0, 2.0, 6.5],   look: [0, 1.2, 4.0] },
-  { t: 12.0, pos: [8.5, 3.5, 0],   look: [0, 1.5, 1.5] },
-];
-
-function smooth(t: number) {
-  return t * t * (3 - 2 * t);
-}
-
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t;
-}
-
 function CinematicCamera({
   introStartRef,
   swayEnabled,
@@ -1097,30 +1076,72 @@ function CinematicCamera({
     }
 
     const elapsed = (performance.now() - introStartRef.current) / 1000;
+    const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-    if (elapsed < 12.0) {
-      let idx = 0;
-      for (let i = 0; i < CAMERA_KEYFRAMES.length - 1; i++) {
-        if (elapsed >= CAMERA_KEYFRAMES[i].t && elapsed <= CAMERA_KEYFRAMES[i + 1].t) {
-          idx = i;
-          break;
-        }
-      }
-      const k1 = CAMERA_KEYFRAMES[idx];
-      const k2 = CAMERA_KEYFRAMES[idx + 1];
-      const dt = (elapsed - k1.t) / (k2.t - k1.t);
-      const et = smooth(Math.max(0, Math.min(1, dt)));
+    if (elapsed < 2.5) {
+      camera.position.set(0, -0.4, 0.75);
+      camera.lookAt(0, -0.6, -2.25);
+      return;
+    }
+
+    if (elapsed < 5.0) {
+      const t = (elapsed - 2.5) / 2.5;
+      const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
+
+      camera.position.set(0, -0.4, 0.75);
+
+      const dx = -Math.sin(yaw) * 3;
+      const dz = -Math.cos(yaw) * 3;
+
+      camera.lookAt(
+        camera.position.x + dx,
+        camera.position.y - 0.2,
+        camera.position.z + dz
+      );
+      return;
+    }
+
+    if (elapsed < 7.5) {
+      const t = (elapsed - 5.0) / 2.5;
+      const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       camera.position.set(
-        lerp(k1.pos[0], k2.pos[0], et),
-        lerp(k1.pos[1], k2.pos[1], et),
-        lerp(k1.pos[2], k2.pos[2], et)
+        0,
+        -0.4 + et * 0.9,
+        0.75 + et * 4.75
       );
-      camera.lookAt(
-        lerp(k1.look[0], k2.look[0], et),
-        lerp(k1.look[1], k2.look[1], et),
-        lerp(k1.look[2], k2.look[2], et)
+
+      camera.lookAt(0, camera.position.y - 0.3, camera.position.z + 3);
+      return;
+    }
+
+    if (elapsed < 9.5) {
+      const t = (elapsed - 7.5) / 2.0;
+      const et = smoothstep(Math.max(0, Math.min(1, t)));
+
+      camera.position.set(
+        0,
+        0.5 + et * 3.0,
+        5.5 + et * 1.0
       );
+
+      camera.lookAt(0, camera.position.y - 0.3, camera.position.z + 3);
+      return;
+    }
+
+    if (elapsed < 12.0) {
+      const t = (elapsed - 9.5) / 2.5;
+      const et = smoothstep(Math.max(0, Math.min(1, t)));
+
+      camera.position.set(
+        0 + (8.5 - 0) * et,
+        3.5,
+        6.5 + (0 - 6.5) * et
+      );
+
+      const lookY = 3.2 + (1.5 - 3.2) * et;
+      const lookZ = 9.5 + (1.5 - 9.5) * et;
+      camera.lookAt(0, lookY, lookZ);
       return;
     }
 
@@ -1142,7 +1163,7 @@ function CinematicCamera({
       swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.08;
 
       camera.rotateY(-swayCurrent.current.x);
-      camera.rotateX(-swayCurrent.current.y);
+      camera.rotateX(swayCurrent.current.y);
     }
   });
 
