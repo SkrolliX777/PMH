@@ -603,9 +603,9 @@ function SideWall({ side }: { side: "left" | "right" }) {
         {mat}
       </mesh>
 
-      <mesh position={[0, winCY, -0.005]}>
+      <mesh position={[0, winCY, 0.005]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
-        <meshBasicMaterial color="#aaddff" transparent opacity={0.35} side={THREE.DoubleSide} />
+                <meshBasicMaterial color="#aaddff" />
       </mesh>
 
       <mesh position={[0, winCY + winH / 2 + 0.04, 0.01]}>
@@ -1173,7 +1173,7 @@ function CinematicCamera({
       swayCurrent.current.x += (swayTarget.current.x - swayCurrent.current.x) * 0.08;
       swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.08;
 
-      camera.rotateY(-swayCurrent.current.x);
+      camera.rotateY(swayCurrent.current.x);
       camera.rotateX(swayCurrent.current.y);
     }
   });
