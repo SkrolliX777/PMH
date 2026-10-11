@@ -952,8 +952,58 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
   );
 }
 
-function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<number | null> }) {
-  const { camera } = useThree();
+function CinematicCamera({
+  introStartRef,
+  swayEnabled,
+}: {
+  introStartRef: React.RefObject<number | null>;
+  swayEnabled: boolean;
+}) {
+  const { camera, gl } = useThree();
+  const swayTarget = useRef({ x: 0, y: 0 });
+  const swayCurrent = useRef({ x: 0, y: 0 });
+  const swayActive = useRef(false);
+
+  useEffect(() => {
+    if (!swayEnabled) return;
+
+    const dom = gl.domElement;
+
+    const onDown = (e: PointerEvent) => {
+      swayActive.current = true;
+      onMove(e);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!swayActive.current) return;
+      const rect = dom.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width / 2);
+      const dy = (e.clientY - cy) / (rect.height / 2);
+      const maxAngle = 0.35;
+      swayTarget.current.x = Math.max(-1, Math.min(1, dx)) * maxAngle;
+      swayTarget.current.y = Math.max(-1, Math.min(1, dy)) * maxAngle;
+    };
+
+    const onUp = () => {
+      swayActive.current = false;
+      swayTarget.current.x = 0;
+      swayTarget.current.y = 0;
+    };
+
+    dom.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+
+    return () => {
+      dom.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [gl, swayEnabled]);
 
   useFrame(() => {
     if (introStartRef.current == null) {
@@ -964,14 +1014,12 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
 
     const elapsed = (performance.now() - introStartRef.current) / 1000;
 
-    // Фаза 1: стоим внутри дома, смотрим вглубь (на интерьер)
     if (elapsed < 2.5) {
       camera.position.set(0, -0.4, 0.75);
       camera.lookAt(0, -0.9, -1.18);
       return;
     }
 
-    // Фаза 2: разворот на 180° через правую сторону
     if (elapsed < 4.0) {
       const t = (elapsed - 2.5) / 1.5;
       const et = t * t * (3 - 2 * t);
@@ -985,7 +1033,6 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
       return;
     }
 
-    // Фаза 3: движение к двери
     if (elapsed < 4.7) {
       const t = (elapsed - 4.0) / 0.7;
       const et = t * t * (3 - 2 * t);
@@ -995,7 +1042,6 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
       return;
     }
 
-    // Фаза 4: вылет наружу через дверь + переход к орбите
     if (elapsed < 7.2) {
       const t = (elapsed - 4.7) / 2.5;
       const et = t * t * (3 - 2 * t);
@@ -1018,7 +1064,6 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
       return;
     }
 
-    // Фаза 5: бесконечная орбита
     const t = (elapsed - 7.2) / 20;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
@@ -1031,6 +1076,14 @@ function CinematicCamera({ introStartRef }: { introStartRef: React.RefObject<num
     const lookX = Math.sin(angle * 1) * 1.5;
     const lookZ = Math.cos(angle * 1) * 1.5;
     camera.lookAt(lookX, 1.5, lookZ);
+
+    if (swayEnabled) {
+      swayCurrent.current.x += (swayTarget.current.x - swayCurrent.current.x) * 0.15;
+      swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.15;
+
+      camera.rotateY(-swayCurrent.current.x);
+      camera.rotateX(-swayCurrent.current.y);
+    }
   });
 
   return null;
@@ -1067,11 +1120,21 @@ function Scene() {
   const fpsRef = useRef<HTMLDivElement>(null);
   const introStartRef = useRef<number | null>(performance.now());
   const [showHud, setShowHud] = useState(false);
+  const [swayEnabled, setSwayEnabled] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setShowHud(true), 7500);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setShowHud(true), 7500);
+    const t2 = setTimeout(() => setSwayEnabled(true), 7200);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
+
+  const handleExit = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg && tg.close) tg.close();
+  };
 
   return (
     <>
@@ -1102,6 +1165,33 @@ function Scene() {
         — FPS
       </div>
 
+      <button
+        onClick={handleExit}
+        style={{
+          position: "absolute",
+          bottom: 12,
+          left: 12,
+          zIndex: 10,
+          padding: "6px 16px",
+          fontSize: 12,
+          fontFamily: "system-ui",
+          fontWeight: 600,
+          letterSpacing: 0.5,
+          color: "#fff",
+          background: "rgba(0, 0, 0, 0.55)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+          borderRadius: 8,
+          cursor: "pointer",
+          opacity: showHud ? 1 : 0,
+          transition: "opacity 1s ease, background 0.15s ease",
+          WebkitTapHighlightColor: "transparent",
+          outline: "none",
+          touchAction: "manipulation",
+        }}
+      >
+        Выход
+      </button>
+
       <Canvas
         camera={{ position: [0, -0.4, 0.75], fov: 55 }}
         dpr={[1, 1.5]}
@@ -1125,7 +1215,7 @@ function Scene() {
         <Crates />
         <House introStartRef={introStartRef} />
         <Drone introStartRef={introStartRef} />
-        <CinematicCamera introStartRef={introStartRef} />
+        <CinematicCamera introStartRef={introStartRef} swayEnabled={swayEnabled} />
         <FpsMeter textRef={fpsRef} />
       </Canvas>
     </>
