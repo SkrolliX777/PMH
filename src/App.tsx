@@ -414,7 +414,7 @@ function FrontWindow({ x }: { x: number }) {
   const trimColor = "#5a3018";
   const D = 2.4;
   const y = 1.35;
-  const z = D / 2 + 0.01;
+  const z = D / 2 + 0.005;
   const zz = D / 2 + 0.02;
 
   return (
@@ -458,7 +458,7 @@ function Door({ doorRef }: { doorRef: React.RefObject<THREE.Group | null> }) {
   const doorHeight = 1.4;
 
   return (
-    <group position={[-doorWidth / 2, 0.9, D / 2 + 0.01]}>
+    <group position={[-doorWidth / 2, 0.9, D / 2 + 0.005]}>
       <group ref={doorRef}>
         <mesh position={[doorWidth / 2, 0, 0]}>
           <planeGeometry args={[doorWidth, doorHeight]} />
@@ -594,7 +594,7 @@ function SideWall({ side }: { side: "left" | "right" }) {
         <planeGeometry args={[D, wallTop - winTop]} />
         {mat}
       </mesh>
-      <mesh position={[(wallBottom === wallBottom ? -D / 2 + (winLeft + D / 2) / 2 : 0), winCY, 0]}>
+      <mesh position={[-D / 2 + (winLeft + D / 2) / 2, winCY, 0]}>
         <planeGeometry args={[winLeft - (-D / 2), winH]} />
         {mat}
       </mesh>
@@ -603,8 +603,8 @@ function SideWall({ side }: { side: "left" | "right" }) {
         {mat}
       </mesh>
 
-      <mesh position={[0, winCY, 0.005]}>
-        <planeGeometry args={[winW, winH]} />
+      <mesh position={[0, winCY, -0.005]}>
+        <planeGeometry args={[winW - 0.01, winH - 0.01]} />
         <meshBasicMaterial color="#aaddff" transparent opacity={0.35} side={THREE.DoubleSide} />
       </mesh>
 
@@ -690,6 +690,8 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
   const win2RightX = winX + winW / 2;
   const winBottom = winY - winH / 2;
   const winTop = winY + winH / 2;
+  const doorLeftX = -doorW / 2;
+  const doorRightX = doorW / 2;
 
   return (
     <group position={[0, -1.5, 0]}>
@@ -706,20 +708,23 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
       <SideWall side="left" />
       <SideWall side="right" />
 
-      {/* Передняя стена: сегменты вокруг двери и окон */}
       <mesh position={[(-W / 2 + winLeftX) / 2, H / 2 + 0.2, D / 2]}>
         <planeGeometry args={[winLeftX - (-W / 2), H]} />
         {wallMat}
       </mesh>
-      <mesh position={[(winRightX + win2LeftX) / 2, H / 2 + 0.2, D / 2]}>
-        <planeGeometry args={[win2LeftX - winRightX, H]} />
+      <mesh position={[(winRightX + doorLeftX) / 2, H / 2 + 0.2, D / 2]}>
+        <planeGeometry args={[doorLeftX - winRightX, H]} />
+        {wallMat}
+      </mesh>
+      <mesh position={[(doorRightX + win2LeftX) / 2, H / 2 + 0.2, D / 2]}>
+        <planeGeometry args={[win2LeftX - doorRightX, H]} />
         {wallMat}
       </mesh>
       <mesh position={[(win2RightX + W / 2) / 2, H / 2 + 0.2, D / 2]}>
         <planeGeometry args={[W / 2 - win2RightX, H]} />
         {wallMat}
       </mesh>
-      {/* Под окнами */}
+
       <mesh position={[winLeftX + winW / 2, H / 2 + 0.2 + (wallBottom + winBottom) / 2, D / 2]}>
         <planeGeometry args={[winW, winBottom - wallBottom]} />
         {wallMat}
@@ -728,7 +733,6 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <planeGeometry args={[winW, winBottom - wallBottom]} />
         {wallMat}
       </mesh>
-      {/* Над окнами */}
       <mesh position={[winLeftX + winW / 2, H / 2 + 0.2 + (winTop + wallTop) / 2, D / 2]}>
         <planeGeometry args={[winW, wallTop - winTop]} />
         {wallMat}
@@ -737,7 +741,6 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <planeGeometry args={[winW, wallTop - winTop]} />
         {wallMat}
       </mesh>
-      {/* Над дверью */}
       <mesh position={[0, H / 2 + 0.2 + (doorTop + wallTop) / 2, D / 2]}>
         <planeGeometry args={[doorW, wallTop - doorTop]} />
         {wallMat}
@@ -759,7 +762,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         {wallMat}
       </mesh>
 
-      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.02]}>
+      <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
         <circleGeometry args={[0.24, 16]} />
         <meshBasicMaterial color="#aaddff" transparent opacity={0.4} />
       </mesh>
@@ -1010,6 +1013,7 @@ function Drone({ introStartRef }: { introStartRef: React.RefObject<number | null
     </group>
   );
 }
+
 function CinematicCamera({
   introStartRef,
   swayEnabled,
@@ -1079,73 +1083,75 @@ function CinematicCamera({
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
     if (elapsed < 2.5) {
-    camera.position.set(0, -0.4, -0.6);
-    camera.lookAt(0, -0.6, -3.6);
-    return;
-}
+      camera.position.set(0, -1.4, 0.3);
+      camera.lookAt(0, -1.5, -2.7);
+      return;
+    }
 
     if (elapsed < 5.0) {
-  const t = (elapsed - 2.5) / 2.5;
-  const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
+      const t = (elapsed - 2.5) / 2.5;
+      const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-  camera.position.set(0, -0.4, -0.6);
+      camera.position.set(0, -1.4, 0.3);
 
-  const dx = Math.sin(yaw) * 3;
-  const dz = -Math.cos(yaw) * 3;
+      const dx = Math.sin(yaw) * 3;
+      const dz = -Math.cos(yaw) * 3;
 
-  camera.lookAt(
-    camera.position.x + dx,
-    camera.position.y - 0.2,
-    camera.position.z + dz
-  );
-  return;
-}
+      camera.lookAt(
+        camera.position.x + dx,
+        camera.position.y - 0.1,
+        camera.position.z + dz
+      );
+      return;
+    }
 
-   if (elapsed < 7.5) {
-  const t = (elapsed - 5.0) / 2.5;
-  const et = smoothstep(Math.max(0, Math.min(1, t)));
+    if (elapsed < 7.5) {
+      const t = (elapsed - 5.0) / 2.5;
+      const et = smoothstep(Math.max(0, Math.min(1, t)));
 
-  camera.position.set(
-    0,
-    -0.4 + et * 0.3,
-    -0.6 + et * 6.1
-  );
+      camera.position.set(
+        0,
+        -1.4 + et * 0.2,
+        0.3 + et * 5.2
+      );
 
-  camera.lookAt(0, camera.position.y - 0.2, camera.position.z + 3);
-  return;
-}
+      camera.lookAt(0, camera.position.y - 0.1, camera.position.z + 3);
+      return;
+    }
 
     if (elapsed < 9.5) {
-  const t = (elapsed - 7.5) / 2.0;
-  const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
+      const t = (elapsed - 7.5) / 2.0;
+      const yaw = smoothstep(Math.max(0, Math.min(1, t))) * Math.PI;
 
-  camera.position.set(0, 0.2, 5.5);
+      camera.position.set(0, -1.2, 5.5);
 
-  const dx = Math.sin(yaw) * 3;
-  const dz = Math.cos(yaw) * 3;
+      const dx = Math.sin(yaw) * 3;
+      const dz = Math.cos(yaw) * 3;
 
-  camera.lookAt(
-    camera.position.x + dx,
-    camera.position.y + 1.0,
-    camera.position.z + dz
-  );
-  return;
-}
+      camera.lookAt(
+        camera.position.x + dx,
+        camera.position.y + 1.2,
+        camera.position.z + dz
+      );
+      return;
+    }
+
     if (elapsed < 12.0) {
-  const t = (elapsed - 9.5) / 2.5;
-  const et = smoothstep(Math.max(0, Math.min(1, t)));
+      const t = (elapsed - 9.5) / 2.5;
+      const et = smoothstep(Math.max(0, Math.min(1, t)));
 
-  camera.position.set(
-    0 + (8.5 - 0) * et,
-    0.2 + (3.5 - 0.2) * et,
-    5.5 + (0 - 5.5) * et
-  );
+      camera.position.set(
+        0 + (8.5 - 0) * et,
+        -1.2 + (3.5 - (-1.2)) * et,
+        5.5 + (0 - 5.5) * et
+      );
 
-  const lookY = 1.2 + (1.5 - 1.2) * et;
-  const lookZ = 2.5 + (1.5 - 2.5) * et;
-  camera.lookAt(0, lookY, lookZ);
-  return;
-}
+      const lookY = 0 + (1.5 - 0) * et;
+      const lookZ = 2.5 + (1.5 - 2.5) * et;
+      camera.lookAt(0, lookY, lookZ);
+      return;
+    }
+
     const t = (elapsed - 12.0) / ORBIT_PERIOD;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
@@ -1275,7 +1281,7 @@ function Scene() {
       </button>
 
       <Canvas
-        camera={{ position: [0, -0.4, 0.75], fov: 55 }}
+        camera={{ position: [0, -1.4, 0.3], fov: 55 }}
         dpr={[1, 1.5]}
         gl={{
           antialias: true,
