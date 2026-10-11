@@ -1173,8 +1173,8 @@ function CinematicCamera({
       swayCurrent.current.x += (swayTarget.current.x - swayCurrent.current.x) * 0.08;
       swayCurrent.current.y += (swayTarget.current.y - swayCurrent.current.y) * 0.08;
 
-      camera.rotateY(swayCurrent.current.x);
-      camera.rotateX(-swayCurrent.current.y);
+      camera.rotateY(-swayCurrent.current.x);
+      camera.rotateX(swayCurrent.current.y);
     }
   });
 
