@@ -273,6 +273,10 @@ function Wall({ position, rotationY = 0 }: { position: [number, number, number];
             <planeGeometry args={[1.8, 0.9]} />
             <meshBasicMaterial color="#fff8d4" />
           </mesh>
+          <mesh position={[0, 0, 0.005]}>
+            <planeGeometry args={[2.8, 1.6]} />
+            <meshBasicMaterial color="#fff0b0" transparent opacity={0.35} />
+          </mesh>
         </group>
       ))}
     </group>
@@ -417,7 +421,7 @@ function FrontWindow({ x }: { x: number }) {
     <group>
       <mesh position={[x, y, z]}>
         <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color="#aaddff" />
+        <meshBasicMaterial color="#ffcc70" />
       </mesh>
       <mesh position={[x, y, zz]}>
         <boxGeometry args={[0.68, 0.04, 0.01]} />
@@ -601,7 +605,7 @@ function SideWall({ side }: { side: "left" | "right" }) {
 
       <mesh position={[0, winCY, 0.005]}>
         <planeGeometry args={[winW - 0.01, winH - 0.01]} />
-        <meshBasicMaterial color="#aaddff" />
+        <meshBasicMaterial color="#ffcc70" />
       </mesh>
 
       <mesh position={[0, winCY + winH / 2 + 0.04, 0.01]}>
@@ -716,7 +720,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
     if (interiorRef.current && introStartRef.current != null) {
       const elapsed = (performance.now() - introStartRef.current) / 1000;
-      interiorRef.current.visible = elapsed < 8.0;
+      interiorRef.current.visible = elapsed < 9.0;
     }
   });
 
@@ -740,7 +744,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
         <meshStandardMaterial color="#5a5a60" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      <mesh position={[0, H / 2 + 0.2, -D / 2]} rotation={[0, Math.PI, 0]}>
+      <mesh position={[0, H / 2 + 0.2, -D / 2]}>
         <planeGeometry args={[W, H]} />
         {wallMat}
       </mesh>
@@ -780,7 +784,7 @@ function House({ introStartRef }: { introStartRef: React.RefObject<number | null
 
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.005]}>
         <circleGeometry args={[0.24, 16]} />
-        <meshBasicMaterial color="#aaddff" />
+        <meshBasicMaterial color="#ffcc70" />
       </mesh>
       <mesh position={[0, H + 0.2 + ROOF_H * 0.45, D / 2 + 0.025]}>
         <ringGeometry args={[0.24, 0.31, 16]} />
@@ -904,7 +908,7 @@ function Crates() {
   );
 }
 
-const INTRO_DRONE_START = 11.0;
+const INTRO_DRONE_START = 12.0;
 const ORBIT_PERIOD = 20;
 const DRONE_PHASE_OFFSET = Math.PI - (INTRO_DRONE_START / ORBIT_PERIOD) * Math.PI * 2;
 
@@ -1098,7 +1102,7 @@ function CinematicCamera({
     const elapsed = (performance.now() - introStartRef.current) / 1000;
     const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-    // A: 0–2.5 — стоим, смотрим вглубь дома
+    // A: 0–2.5 — стоим в центре дома, смотрим вглубь
     if (elapsed < 2.5) {
       camera.position.set(0, -0.5, 0.3);
       camera.lookAt(0, -0.5, -2.7);
@@ -1123,53 +1127,48 @@ function CinematicCamera({
       return;
     }
 
-    // C: 5–8 — ВЫЛЕТ + одновременный разворот ещё на 180
-    // Камера летит из (0,-0.5,0.3) в (0,-0.1,5.5)
-    // Угол поворота: от 0 (смотрим в +Z) до π (смотрим в -Z, на дом)
-    if (elapsed < 8.0) {
-      const t = (elapsed - 5.0) / 3.0;
+    // C: 5–9 — вылет вперёд через дверь + одновременно разворот ещё на 180
+    // Позиция: (0, -0.5, 0.3) → (0, 1.5, 5.5)
+    // Yaw: 0 → π (смотрит вперёд, потом назад на дом)
+    if (elapsed < 9.0) {
+      const t = (elapsed - 5.0) / 4.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
-      // позиция — линейная интерполяция
-      camera.position.set(
-        0,
-        -0.5 + et * 0.4,
-        0.3 + et * 5.2
-      );
+      const px = 0;
+      const py = -0.5 + et * 2.0;
+      const pz = 0.3 + et * 5.2;
 
-      // поворот — 0 → π. Смотрим сначала в +Z (на дверь), потом разворачиваемся
+      camera.position.set(px, py, pz);
+
       const yaw = et * Math.PI;
       const dx = Math.sin(yaw) * 3;
       const dz = Math.cos(yaw) * 3;
 
-      camera.lookAt(
-        camera.position.x + dx,
-        camera.position.y - 0.15,
-        camera.position.z + dz
-      );
+      camera.lookAt(px + dx, py, pz + dz);
       return;
     }
 
-    // D: 8–11 — плавный переход к орбите, взгляд уже на дом
-    if (elapsed < 11.0) {
-      const t = (elapsed - 8.0) / 3.0;
+    // D: 9–12 — плавный перелёт в точку орбиты
+    // Позиция: (0, 1.5, 5.5) → (8.5, 3.5, 0)
+    // lookAt: (0, 1.5, 2.5) → (0, 1.5, 1.5)
+    if (elapsed < 12.0) {
+      const t = (elapsed - 9.0) / 3.0;
       const et = smoothstep(Math.max(0, Math.min(1, t)));
 
       camera.position.set(
         0 + (8.5 - 0) * et,
-        -0.1 + (3.5 - (-0.1)) * et,
+        1.5 + (3.5 - 1.5) * et,
         5.5 + (0 - 5.5) * et
       );
 
-      const lookX = 0 + (0 - 0) * et;
-      const lookY = -0.3 + (1.5 - (-0.3)) * et;
+      const lookY = 1.5;
       const lookZ = 2.5 + (1.5 - 2.5) * et;
-      camera.lookAt(lookX, lookY, lookZ);
+      camera.lookAt(0, lookY, lookZ);
       return;
     }
 
-    // E: 11+ — бесконечная орбита
-    const t = (elapsed - 11.0) / ORBIT_PERIOD;
+    // E: 12+ — бесконечная орбита
+    const t = (elapsed - 12.0) / ORBIT_PERIOD;
     const angle = t * Math.PI * 2;
     const radius = 8.5 + Math.sin(angle * 2) * 2.5;
     const height = 3.5 + Math.sin(angle * 3) * 1.5;
@@ -1228,8 +1227,8 @@ function Scene() {
   const [swayEnabled, setSwayEnabled] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setShowHud(true), 11500);
-    const t2 = setTimeout(() => setSwayEnabled(true), 11200);
+    const t1 = setTimeout(() => setShowHud(true), 12500);
+    const t2 = setTimeout(() => setSwayEnabled(true), 12200);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
